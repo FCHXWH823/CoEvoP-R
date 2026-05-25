@@ -54,7 +54,7 @@ An evolved objective could incorporate:
 
 | Date | Contributor | Paper | Venue | Key Takeaway | Relevance to Objective |
 |------|-------------|-------|-------|--------------|------------------------|
-| — | — | — | — | — | — |
+| 2026.5.24 | Weihua Xiao | Evolution of Optimization Algorithms for Global Placement via Large Language Models | — | Uses LLM to evolve three components of placement: initialization, preconditioner, and optimizer. Does **not** evolve the objective function — HPWL is still used as-is. | Directly motivates our goal: the algorithmic pipeline can be LLM-evolved, but the objective (HPWL) remains a fixed proxy for routing. Our work targets exactly this gap — evolving the objective function itself to better reflect true routing cost. |
 
 ### Paper Categories of Interest
 
