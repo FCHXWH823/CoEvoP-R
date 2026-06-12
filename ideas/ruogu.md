@@ -41,7 +41,7 @@ The pattern across robotics, operations research, and general algorithm discover
 
 ## Core Idea
 
-The proposal follows the LLM-driven evolutionary discovery template established by FunSearch (Romera-Paredes et al., 2023), EoH (Liu et al., 2024), and LLM-SR (Shojaee et al., 2025), and applies it to closed-form placement objectives. The LLM proposes candidate symbolic objectives over standard placement-stage features. Each candidate is scored by its rank correlation against post-route PPA labels drawn from public cross-stage corpora such as CircuitNet 2.0 (Jiang et al., ICLR 2024) and the ChiPBench protocol (Wang et al., 2024). High-scoring candidates are kept and fed back to the LLM for mutation. The intended output is a single closed-form, differentiable function that drops into an analytical placer in place of the HPWL-plus-density surrogate.
+The proposal follows the LLM-driven evolutionary discovery template established by FunSearch (Romera-Paredes et al., 2023), EoH (Liu et al., 2024), and LLM-SR (Shojaee et al., 2025), and applies it to closed-form placement objectives. The LLM proposes candidate symbolic objectives over standard placement-stage features. Each candidate is scored by its rank correlation against post-route routability and timing labels drawn from public cross-stage corpora such as CircuitNet 2.0 (Jiang et al., ICLR 2024) and end-to-end OpenROAD runs following the ChiPBench protocol (Wang et al., 2024). High-scoring candidates are kept and fed back to the LLM for mutation. The intended output is a single closed-form, differentiable function that drops into an analytical placer in place of the HPWL-plus-density surrogate.
 
 The pipeline at the level of commitments made at this stage:
 
@@ -84,7 +84,7 @@ The labels driving the fitness signal are post-route PPA metrics extracted from 
 
 | Level | Description | Status |
 |---|---|---|
-| 1. Routing-aware objective | The labels encode routing-stage outcomes such as congestion overflow, DRC violations, and final wirelength. The discovered symbolic objective inherits this signal. | Baseline contribution, defensible as a standalone paper. |
+| 1. Routing-aware objective | The labels encode routing-stage outcomes such as congestion maps, design-rule violation hotspots, IR-drop, and net delay. The discovered symbolic objective inherits this signal. | Baseline contribution, defensible as a standalone paper. |
 | 2. Loop closure with real routing | Outer validation runs OpenROAD on top candidates, computes real post-route PPA, and uses the gap as a correction signal to re-rank or trigger another round of label collection. | What the first paper should target. |
 | 3. Joint placement and routing evolution | Simultaneously evolve a placement objective and a routing cost function so the resulting placer and router beat the baseline pair on end-to-end PPA. | Harder, since co-evolving coupled populations is unstable and modifying the router source is invasive. Deferred to a follow-up paper. |
 
@@ -94,12 +94,12 @@ The first paper targets level one with a level-two validation protocol, and leve
 
 ## Proposed Experiment / Validation
 
-The data setup uses public cross-stage corpora that prior work on routability and PPA prediction has already used. CircuitNet 2.0 (Jiang et al., ICLR 2024) provides placement samples with post-route labels at 28 nm. ISPD 2005 and ICCAD 2015 benchmarks run through OpenROAD using the ChiPBench protocol (Wang et al., 2024) provide end-to-end PPA evaluation that prior placement work reports against. Held-out subsets of CircuitNet at different technology or design styles serve as out-of-distribution probes.
+The data setup uses public cross-stage corpora that prior work on routability and PPA prediction has already used. CircuitNet 2.0 (Jiang et al., ICLR 2024) provides about ten thousand placement samples across CPU, GPU, and AI-chip designs at 14 nm FinFET, generated through commercial flows (Synopsys Design Compiler plus Cadence Innovus). The labels it ships are post-route congestion maps, design-rule-violation hotspots, IR-drop maps, and per-net delay graphs. Scalar metrics like WNS, TNS, and total wirelength are not provided directly and have to be aggregated from the per-net delay graphs or extracted from separately generated STA and routing reports. ISPD 2005 and ICCAD 2015 benchmarks run through OpenROAD using the ChiPBench protocol (Wang et al., 2024) provide end-to-end PPA evaluation that prior placement work reports against, including the missing scalar metrics. Held-out subsets of CircuitNet at different design styles serve as out-of-distribution probes.
 
 | Dataset | Use |
 |---|---|
-| CircuitNet 2.0 | Inner-loop fitness against post-route labels |
-| ISPD 2005 / ICCAD 2015 via OpenROAD | End-to-end post-route validation, ChiPBench-compatible |
+| CircuitNet 2.0 (14 nm FinFET, ~10K samples) | Inner-loop fitness against post-route congestion, DRV, IR-drop, and net delay labels |
+| ISPD 2005 / ICCAD 2015 via OpenROAD | End-to-end post-route validation following the ChiPBench protocol, source of scalar WNS / TNS / wirelength |
 | Held-out CircuitNet subset | Out-of-distribution generalization probe |
 
 The baselines are the obvious comparisons across prior work.
@@ -125,7 +125,8 @@ The experimental questions worth answering, stated qualitatively, are whether a 
 - How to pass feature-importance signal from the labels into the LLM prompt so the search is steered toward features that actually carry PPA signal.
 - Whether to aim for a single universal symbolic objective or a family conditioned on design properties. EvoLLM's per-design vs cross-design gap is the cautionary tale.
 - How wide a symbolic vocabulary and how large a complexity budget to allow. Too restrictive and the right formula is unexpressible. Too permissive and the search wastes its budget.
-- How robust the labels are. CircuitNet has known coverage limits, and the project may need locally generated OpenROAD runs if those limits bite.
+- How to aggregate CircuitNet's structured labels into a fitness signal. The labels are images (congestion, DRV, IR-drop) and graphs (net delay), not scalars. The options are scalar-aggregation per image (mean, p95, total count), multi-component fitness with per-label rank correlation, or image-level structural similarity. This choice has to be made before the pilot.
+- How robust the labels are. CircuitNet has known coverage limits and severe per-design sample imbalance (thousands of samples for small CPUs but only tens for large GPU and AI-chip designs). Augmenting with locally generated OpenROAD runs is realistic for the small designs and prohibitive for the large ones.
 - Whether closed-form is enough. If post-route PPA is genuinely non-symbolic, the contribution becomes "best closed-form approximation" rather than "solved."
 - Where the frontend or RTL side enters. RTL-conditioned objectives are the natural extension and connect to VeriLoC-style RTL PPA prediction, but they belong in a follow-up paper rather than as scope creep on the first one.
 
