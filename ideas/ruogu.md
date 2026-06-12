@@ -122,13 +122,11 @@ The experimental questions worth answering, stated qualitatively, are whether a 
 
 ## Open Questions
 
-- How to pass feature-importance signal from the labels into the LLM prompt so the search is steered toward features that actually carry PPA signal.
-- Whether to aim for a single universal symbolic objective or a family conditioned on design properties. EvoLLM's per-design vs cross-design gap is the cautionary tale.
-- How wide a symbolic vocabulary and how large a complexity budget to allow. Too restrictive and the right formula is unexpressible. Too permissive and the search wastes its budget.
-- How to aggregate CircuitNet's structured labels into a fitness signal. The labels are images (congestion, DRV, IR-drop) and graphs (net delay), not scalars. The options are scalar-aggregation per image (mean, p95, total count), multi-component fitness with per-label rank correlation, or image-level structural similarity. This choice has to be made before the pilot.
-- How robust the labels are. CircuitNet has known coverage limits and severe per-design sample imbalance (thousands of samples for small CPUs but only tens for large GPU and AI-chip designs). Augmenting with locally generated OpenROAD runs is realistic for the small designs and prohibitive for the large ones.
-- Whether closed-form is enough. If post-route PPA is genuinely non-symbolic, the contribution becomes "best closed-form approximation" rather than "solved."
-- Where the frontend or RTL side enters. RTL-conditioned objectives are the natural extension and connect to VeriLoC-style RTL PPA prediction, but they belong in a follow-up paper rather than as scope creep on the first one.
+- Does ranking on CircuitNet labels predict real post-route PPA? If no, the two-loop architecture collapses and we are forced back to expensive inner-loop placer runs.
+- How do we feed per-feature feedback to the LLM beyond a scalar fitness? Eureka's reflection is worth 28.6% of its gain, and our analogue is still undesigned.
+- Can a bounded closed-form formula even capture cross-stage PPA? If no, the contribution becomes "best closed-form approximation" rather than "solved."
+- One global f_sym, or a family conditioned on a design fingerprint? EvoLLM's 10× per-design vs cross-design gap is the warning.
+- Does DREAMPlace's HPWL-tuned wrapper (density weight schedule, learning rate, line search) work with an arbitrary f_sym, or does it need joint retuning?
 
 ---
 
