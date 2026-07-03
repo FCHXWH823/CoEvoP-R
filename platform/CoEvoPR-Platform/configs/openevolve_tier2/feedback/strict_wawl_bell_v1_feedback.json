@@ -1,0 +1,62 @@
+{
+  "feedback_version": 1,
+  "source_run": "runs/openevolve_tier2/strict_wawl_bell_gpt41mini_v1",
+  "source_model": "gpt-4.1-mini",
+  "scope": "direct Tier-2 DREAMPlace search on bp_fe, ethernet, and isa_npu with OpenROAD disabled",
+  "summary": {
+    "best_overall_program_role": "fixed_baseline",
+    "best_overall_objective": "dreamplace_wawl_density_bell",
+    "best_overall_terms": [
+      "wirelength_wawl",
+      "density_bell"
+    ],
+    "best_overall_hpwl_delta_pct_vs_native_default": -34.7216972651313,
+    "best_overall_overflow_delta_pct_vs_native_default": -2.2535722916023864,
+    "promotion_worthy_generated_pareto_wins": 0,
+    "raw_generated_pareto_measurements": 1,
+    "rank_based_generated_tradeoffs": 1
+  },
+  "measured_lessons": [
+    {
+      "mechanism_terms": [
+        "wirelength_wawl",
+        "density_bell",
+        "route_pressure_long"
+      ],
+      "observation": "Small route_pressure_long perturbations often stayed very close to the WAWL plus bell-density fixed baseline.",
+      "best_measured_tradeoff": {
+        "hpwl_delta_vs_strongest_fixed_baseline_pct": 0.39732954496112427,
+        "overflow_delta_vs_strongest_fixed_baseline_pct": -0.005737995149597275,
+        "interpretation": "overflow improved slightly while HPWL worsened relative to the strongest fixed baseline"
+      }
+    },
+    {
+      "mechanism_terms": [
+        "wirelength_wawl",
+        "density_bell",
+        "pin_density_pnorm",
+        "soft_rudy_pnorm"
+      ],
+      "observation": "One calibrated candidate showed a raw Pareto measurement relative to the strongest fixed baseline, but the measured effect was very small and not selected as a discovery.",
+      "best_measured_delta_vs_strongest_fixed_baseline_pct": {
+        "hpwl": -0.11023623643622216,
+        "overflow": -0.019789035615911388
+      }
+    },
+    {
+      "mechanism_terms": [
+        "wirelength_wawl",
+        "density_electric",
+        "pin_density_pnorm",
+        "soft_rudy_pnorm"
+      ],
+      "observation": "Electric-density plus pin/RUDY pressure produced large overflow reductions on some cells but much weaker HPWL behavior than the WAWL plus bell-density fixed baseline."
+    }
+  ],
+  "static_failure_patterns": [
+    "Raw LLM coefficients for route_pressure_long, soft_rudy_pnorm, and pin_density_pnorm were often too large before calibration.",
+    "Several later attempts repeated mechanisms already measured as near-misses instead of making a mechanism-level change.",
+    "Pin-count-weighted wirelength by itself was too close to the explicit wirelength-density family."
+  ],
+  "next_search_hint": "Use these as measured execution facts. The next objective should explore a mechanism-level change in how routing, pin pressure, and density smoothing interact, instead of only adding a tiny routing perturbation to WAWL plus bell density."
+}

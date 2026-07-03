@@ -1,0 +1,39 @@
+# Current Program Information
+- Fitness: {fitness_score}
+- Feature coordinates: {feature_coords}
+- Focus areas: {improvement_areas}
+
+# Task Environment
+{task_environment}
+
+{artifacts}
+
+# Program Evolution History
+{evolution_history}
+
+# Current Program
+```{language}
+{current_program}
+```
+
+# Task
+Suggest a targeted improvement to the current objective program that can improve FITNESS SCORE.
+The evaluator rewards end-to-end placement behavior, including routing/congestion, timing proxies when available, runtime, stability, and wirelength-related placement quality.
+Different objective mechanisms with similar fitness but different feature coordinates are useful.
+
+Use the same function API and return a complete objective_program in the JSON response.
+Also fill change_description with the exact OpenEvolve SEARCH/REPLACE diff format shown below:
+
+<<<<<<< SEARCH
+# Original code to find and replace (must match exactly)
+=======
+# New replacement code
+>>>>>>> REPLACE
+
+You may include multiple SEARCH/REPLACE blocks in change_description.
+Each SEARCH section must exactly match code in the current program.
+The objective_program field must contain the complete edited program after applying the diff, because the CoEvoP&R validator checks complete programs.
+
+Do not merely copy the current program.
+Do not add an effectively-zero no-op term.
+Prefer a physically meaningful routing/timing/placement mechanism that the evaluator can test.

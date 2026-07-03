@@ -1,0 +1,168 @@
+diff -uNr a/dreamplace/ops/timing/src/timing_cpp.cpp b/dreamplace/ops/timing/src/timing_cpp.cpp
+--- a/dreamplace/ops/timing/src/timing_cpp.cpp	2026-07-02 03:45:10.558809423 -0600
++++ b/dreamplace/ops/timing/src/timing_cpp.cpp	2026-07-02 03:45:10.558809423 -0600
+@@ -1,9 +1,57 @@
+ #include "timing_cpp.h"
+ 
+ #include <flute.hpp>
++#include <algorithm>
++#include <atomic>
++#include <unordered_map>
+ 
+ DREAMPLACE_BEGIN_NAMESPACE
+ 
++
++namespace {
++
++// CoEvoP&R timing-collateral bridge:
++//
++// Some ChipBench/DREAMPlace timing packages use DEF-style hierarchical net
++// names in the placement database, e.g. "icache_1/lce/_02063_", while the
++// OpenTimer Verilog loaded for timing contains synthesized identifier-safe
++// names, e.g. "icache_1_lce__02063_". The original DREAMPlace timing path
++// asserts when a placement net/pin is absent from the timer. For timing-proxy
++// feedback, treat these as collateral gaps: resolve common aliases first and
++// skip still-unmatched nets rather than aborting the whole placement run.
++static inline std::string coevopTimingAlias(std::string name) {
++  name.erase(std::remove(name.begin(), name.end(), '\\'), name.end());
++  std::replace(name.begin(), name.end(), '/', '_');
++  return name;
++}
++
++template <typename MapT>
++static inline std::unordered_map<std::string, std::string>
++coevopBuildTimingAliasMap(const MapT& objects) {
++  std::unordered_map<std::string, std::string> aliases;
++  aliases.reserve(objects.size() * 3);
++  for (const auto& kv : objects) {
++    aliases.emplace(kv.first, kv.first);
++    aliases.emplace(coevopTimingAlias(kv.first), kv.first);
++    std::string dotted = kv.first;
++    std::replace(dotted.begin(), dotted.end(), '/', '.');
++    aliases.emplace(dotted, kv.first);
++  }
++  return aliases;
++}
++
++static inline std::string coevopResolveTimingName(
++    const std::unordered_map<std::string, std::string>& aliases,
++    const std::string& name) {
++  auto iter = aliases.find(name);
++  if (iter != aliases.end()) return iter->second;
++  iter = aliases.find(coevopTimingAlias(name));
++  if (iter != aliases.end()) return iter->second;
++  return std::string();
++}
++
++}  // namespace
++
+ ///
+ /// \brief perform timing analysis.
+ /// \param x the horizontal coordinates of cell locations.
+@@ -149,6 +197,10 @@
+   // a scaling to convert the input data types into integers.
+   constexpr const int scale = 1000;  // flute only supports integers.
+   int num_nets = net_names.size();
++  auto coevop_net_alias = coevopBuildTimingAliasMap(timer.nets());
++  auto coevop_pin_alias = coevopBuildTimingAliasMap(timer.pins());
++  std::atomic<int> coevop_skipped_nets(0);
++  std::atomic<int> coevop_skipped_pins(0);
+ 
+   // We traverse all the nets in the netlist.
+   omp_lock_t lock;
+@@ -158,15 +210,41 @@
+     // The reference to the net instance in the timer.
+     // We are goint to add RC nodes and RC edges into the RC tree stored
+     // as the instance variable in this net.
+-    auto net_iter = timer.nets().find(net_names[i]);
+-    dreamplaceAssertMsg(
+-        net_iter != timer.nets().end(),
+-        "could not find net name %s in timer\n", net_names[i].c_str());
++    std::string resolved_net_name = coevopResolveTimingName(
++        coevop_net_alias, net_names[i]);
++    if (resolved_net_name.empty()) {
++      ++coevop_skipped_nets;
++      continue;
++    }
++    auto net_iter = timer.nets().find(resolved_net_name);
++    if (net_iter == timer.nets().end()) {
++      ++coevop_skipped_nets;
++      continue;
++    }
+     auto& net = net_iter->second;
+-    auto& tree = net.emplace_rct();
+     const int degree = netpin_start[i + 1] - netpin_start[i];
+     const int root = flat_netpin[netpin_start[i]];
+ 
++    // Validate all real pins before mutating the RC tree. If any pin cannot
++    // be resolved in the timer, skip this net as incomplete timing collateral.
++    bool coevop_missing_pin = false;
++    for (int j = 0; j < degree; ++j) {
++      int pin = flat_netpin[j + netpin_start[i]];
++      std::string resolved_pin_name = coevopResolveTimingName(
++          coevop_pin_alias, pin_names[pin]);
++      if (resolved_pin_name.empty() ||
++          timer.pins().find(resolved_pin_name) == timer.pins().end()) {
++        coevop_missing_pin = true;
++        break;
++      }
++    }
++    if (coevop_missing_pin) {
++      ++coevop_skipped_pins;
++      continue;
++    }
++
++    auto& tree = net.emplace_rct();
++
+     // This is a lambda expression takes a local pin index in this net as input
+     // and insert node into the rc tree if the node has not been inserted yet.
+     // The name of rc node will be returned.
+@@ -175,12 +253,16 @@
+       auto name = net_names[i] + ":" + std::to_string(index - degree + 1);
+       if (index < degree) {
+         name = pin_names[flat_netpin[index + netpin_start[i]]];
++        std::string resolved_pin_name = coevopResolveTimingName(
++            coevop_pin_alias, name);
++        if (!resolved_pin_name.empty()) name = resolved_pin_name;
+         if (!tree.node(name)) tree.insert_node(name, 0);
+         // Set the inner pin pointer of this rc node.
+         auto pin_iter = timer.pins().find(name);
+-        dreamplaceAssertMsg(
+-            pin_iter != timer.pins().end(),
+-            "could not find pin name %s in timer\n", name.c_str());
++        if (pin_iter == timer.pins().end()) {
++          ++coevop_skipped_pins;
++          return std::string();
++        }
+         tree.node(name)->pin(pin_iter->second);
+       } else {  // This rc node is a Steiner point.
+         if (!tree.node(name)) tree.insert_node(name, 0);
+@@ -311,7 +393,13 @@
+       emplace_rc_node(global2inner_map[root]);
+     }
+     // Assign root node to this RC tree.
+-    tree.assign_root(pin_names[root]);
++    std::string resolved_root_name = coevopResolveTimingName(
++        coevop_pin_alias, pin_names[root]);
++    if (resolved_root_name.empty()) {
++      ++coevop_skipped_pins;
++      continue;
++    }
++    tree.assign_root(resolved_root_name);
+     tree.update_rc_timing();
+ 
+     // Dump some useful information for debugging.
+@@ -324,6 +412,13 @@
+     timer.insert_frontier(*net.root());
+     omp_unset_lock(&lock);
+   }
++  if (coevop_skipped_nets.load() || coevop_skipped_pins.load()) {
++    dreamplacePrint(
++        kWARN,
++        "CoEvoP&R timing proxy skipped %d nets and %d pin-incomplete nets "
++        "because placement names were absent from the OpenTimer netlist\n",
++        coevop_skipped_nets.load(), coevop_skipped_pins.load());
++  }
+   omp_destroy_lock(&lock);
+   dreamplacePrint(kINFO, "rc tree construction is done.\n");
+   auto end = std::chrono::steady_clock::now();

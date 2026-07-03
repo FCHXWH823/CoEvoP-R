@@ -1,0 +1,197 @@
+{
+  "coevop_commit": "64e84dd66993c5fb66b2ddfb938551eba1b011b5",
+  "component_summary_json": "{}",
+  "config_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/obj_4fd265b50589cb27/seed_1002/dreamplace_config.json",
+  "custom_grad_norm": 240461.5,
+  "custom_objective_calls": 50,
+  "custom_total": 9552556000.0,
+  "design": "swerv_wrapper",
+  "dreamplace_commit": "644c547e75819ee05640c3f88114f66f9b0f88da",
+  "failure_stage": null,
+  "hpwl": 40073160.0,
+  "log_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/obj_4fd265b50589cb27/seed_1002/dreamplace.log",
+  "metrics": {
+    "assertion": null,
+    "custom_objective": {
+      "calls": 50,
+      "component_history": [],
+      "component_summary": {},
+      "last_components": {},
+      "last_grad_norm": 240461.5,
+      "last_terms": {
+        "density_electric": {
+          "normalized": 0.00018458814884070307,
+          "raw": 328793.90625
+        },
+        "route_pressure_long": {
+          "normalized": 1.9830570220947266,
+          "raw": 17.780996322631836
+        },
+        "soft_rudy_pnorm": {
+          "normalized": 1.983351230621338,
+          "raw": 17.78363609313965
+        },
+        "wirelength_wawl": {
+          "normalized": 5.362714767456055,
+          "raw": 33020668.0
+        }
+      },
+      "last_total": 9552556000.0,
+      "last_weighted_density_raw": 8.823218e-05,
+      "last_wirelength_raw": 33020670.0,
+      "objective_id": "obj_4fd265b50589cb27",
+      "output_scale": 1781230000.0,
+      "term_history": [
+        {
+          "call": 1,
+          "terms": {
+            "density_electric": {
+              "normalized": 1.0,
+              "raw": 1781229824.0
+            },
+            "route_pressure_long": {
+              "normalized": 1.0,
+              "raw": 8.96645736694336
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.0,
+              "raw": 8.966458320617676
+            },
+            "wirelength_wawl": {
+              "normalized": 1.0,
+              "raw": 6157454.0
+            }
+          }
+        },
+        {
+          "call": 10,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.021018488332629204,
+              "raw": 37438760.0
+            },
+            "route_pressure_long": {
+              "normalized": 3.247147798538208,
+              "raw": 29.115413665771484
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 3.247162103652954,
+              "raw": 29.115543365478516
+            },
+            "wirelength_wawl": {
+              "normalized": 24.276851654052734,
+              "raw": 149483600.0
+            }
+          }
+        },
+        {
+          "call": 20,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0016353341052308679,
+              "raw": 2912906.0
+            },
+            "route_pressure_long": {
+              "normalized": 4.009015083312988,
+              "raw": 35.94666290283203
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 4.009019374847412,
+              "raw": 35.94670486450195
+            },
+            "wirelength_wawl": {
+              "normalized": 15.448108673095703,
+              "raw": 95121016.0
+            }
+          }
+        },
+        {
+          "call": 30,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0005594089743681252,
+              "raw": 996435.9375
+            },
+            "route_pressure_long": {
+              "normalized": 2.6656734943389893,
+              "raw": 23.901647567749023
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 2.6657156944274902,
+              "raw": 23.902027130126953
+            },
+            "wirelength_wawl": {
+              "normalized": 10.46570110321045,
+              "raw": 64442072.0
+            }
+          }
+        },
+        {
+          "call": 40,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0002202674513682723,
+              "raw": 392346.96875
+            },
+            "route_pressure_long": {
+              "normalized": 3.294239044189453,
+              "raw": 29.537654876708984
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 3.294247627258301,
+              "raw": 29.53773307800293
+            },
+            "wirelength_wawl": {
+              "normalized": 7.519168376922607,
+              "raw": 46298932.0
+            }
+          }
+        },
+        {
+          "call": 50,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.00018458814884070307,
+              "raw": 328793.90625
+            },
+            "route_pressure_long": {
+              "normalized": 1.9830570220947266,
+              "raw": 17.780996322631836
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.983351230621338,
+              "raw": 17.78363609313965
+            },
+            "wirelength_wawl": {
+              "normalized": 5.362714767456055,
+              "raw": 33020668.0
+            }
+          }
+        }
+      ],
+      "term_scales": {
+        "density_electric": 1781230000.0,
+        "route_pressure_long": 8.966457,
+        "soft_rudy_pnorm": 8.966458,
+        "wirelength_wawl": 6157454.0
+      }
+    },
+    "last": {
+      "hpwl": 40073160.0,
+      "objective": 8001649000.0,
+      "overflow": 0.2618486
+    },
+    "missing_input_file": null,
+    "timed_out": false
+  },
+  "objective_id": "obj_4fd265b50589cb27",
+  "output_artifact": "runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/obj_4fd265b50589cb27/seed_1002/results/macro_placed/macro_placed.gp.def",
+  "overflow": 0.2618486,
+  "returncode": 0,
+  "run_dir": "runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/obj_4fd265b50589cb27/seed_1002",
+  "runtime_seconds": 16.674570083618164,
+  "seed": 1002,
+  "status": "success",
+  "tns": null,
+  "wns": null
+}

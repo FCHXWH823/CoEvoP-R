@@ -1,0 +1,70 @@
+{
+  "ast": {
+    "args": [
+      {
+        "name": "wirelength_wawl",
+        "op": "term"
+      },
+      {
+        "name": "density_electric",
+        "op": "term"
+      },
+      {
+        "args": [
+          {
+            "op": "const",
+            "value": -1e-07
+          },
+          {
+            "args": [
+              {
+                "name": "route_pressure_long",
+                "op": "term"
+              }
+            ],
+            "op": "log1p"
+          }
+        ],
+        "op": "mul"
+      },
+      {
+        "args": [
+          {
+            "op": "const",
+            "value": -1e-07
+          },
+          {
+            "args": [
+              {
+                "name": "pin_count_weighted_wl",
+                "op": "term"
+              }
+            ],
+            "op": "sqrt"
+          }
+        ],
+        "op": "mul"
+      }
+    ],
+    "op": "add"
+  },
+  "complexity": 11,
+  "components": null,
+  "constants": {
+    "c0": -1e-07,
+    "c1": -1e-07
+  },
+  "created_by": "openai:calibration",
+  "id": "obj_1c623761f3ce9552",
+  "parent_ids": [
+    "obj_9e1a816dfe5e6d3f"
+  ],
+  "rationale": "To escape similarity with previously rejected near-negative mechanisms that involved sigmoid and softplus transforms on routing terms, this objective replaces the nonlinear sigmoid and softplus with simpler sqrt and log1p nonlinearities applied directly to the routing pressures and pin density observables. It uses the pin_count_weighted_wl term to emphasize critical high-fanout nets, adding a form of wirelength-weighted pressure modulation different from prior failures, while keeping algebraic complexity minimal and additive. The formula is a sum of four main components: smooth wirelength, density, log-transformed route pressure, and sqrt of pin density, with simple scalar weights ensuring interpretability and differentiability. This explores a distinct nonlinear composition family and term set, addressing repair instructions and encouraging improved routed PPA. Calibrated coefficients for Tier-2 search: route=-1e-07, density=None, wirelength=None.",
+  "source_program": null,
+  "term_set": [
+    "density_electric",
+    "pin_count_weighted_wl",
+    "route_pressure_long",
+    "wirelength_wawl"
+  ]
+}

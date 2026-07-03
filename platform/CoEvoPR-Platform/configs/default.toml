@@ -1,0 +1,25 @@
+# Default local paths. Override with environment variables or run-specific configs.
+
+circuitnet_root = "${CIRCUITNET_ROOT}"  # optional proxy analysis only
+dreamplace_root = "${HOME}/DREAMPlace/install"
+chipbench_root = "${HOME}/ChiPBench"
+run_root = "runs"
+
+llm_provider = "mock"
+openroad_backend = "chipbench"
+
+[objective]
+max_ast_depth = 5
+max_primitive_count = 12
+min_constant = 1e-6
+max_constant = 1e6
+
+[direct_tier2]
+primary_config = "configs/openevolve_tier2/chipbench_direct_tier2.toml"
+primary_metric = "dreamplace_hpwl_overflow"
+panel_family = "chipbench_nangate45"
+
+[proxy_analysis]
+primary_metric = "spearman"
+secondary_metric = "kendall"
+split_strategy = "by_design_family"

@@ -1,0 +1,50 @@
+# ChipBench signature-circuit GRT-only smoke panel.
+# This panel is for validating OpenROAD global-route feedback without running detailed route.
+
+seeds = [1000]
+iterations = 50
+gpu = 1
+timeout_seconds = 3600
+log_interval = 10
+timing_mode = "none"
+
+[[designs]]
+name = "bp_fe"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/bp_fe/bp_fe.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/bp_fe_top/config.mk"
+reference_def = "${HOME}/ChiPBench/bp_fe_placed.def"
+mode = "grt_only"
+timing_mode = "none"
+global_route_args = "-allow_congestion -verbose -congestion_iterations 5"
+
+[[designs]]
+name = "bp_be"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/bp_be/cfg_000.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/bp_be_top/config.mk"
+mode = "grt_only"
+timing_mode = "none"
+global_route_args = "-allow_congestion -verbose -congestion_iterations 5"
+
+[[designs]]
+name = "swerv_wrapper"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/swerv_wrapper/cfg_default.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/swerv_wrapper/config.mk"
+mode = "grt_only"
+timing_mode = "none"
+global_route_args = "-allow_congestion -verbose -congestion_iterations 5"
+
+[[designs]]
+name = "ethernet"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/ethernet/cfg_000.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/ethernet/config.mk"
+mode = "grt_only"
+timing_mode = "none"
+global_route_args = "-allow_congestion -verbose -congestion_iterations 5"
+
+[[designs]]
+name = "isa_npu"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/isa_npu/train_cfg_1446_mixed.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/isa_npu/config.mk"
+mode = "grt_only"
+timing_mode = "none"
+global_route_args = "-allow_congestion -verbose -congestion_iterations 5"

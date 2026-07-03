@@ -1,0 +1,93 @@
+# Cost-controlled GPT smoke run for routing-aware OpenEvolve Tier-2 validation.
+# Use with:
+#   export OPENAI_API_KEY=...
+#   export OPENAI_MODEL=gpt-4.1-mini
+
+provider = "openai"
+term_scope = "dreamplace_replacement"
+objective_mode = "replacement"
+mutation_mode = "diff"
+max_iterations = 4
+population_size = 30
+archive_size = 8
+num_islands = 2
+checkpoint_interval = 2
+num_top_programs = 2
+num_diverse_programs = 1
+severe_regression_pct = 10.0
+seed = 42
+evaluate_initial_presets = true
+primary_baseline = "default"
+hpwl_gate_search_pct = 5.0
+hpwl_gate_elite_pct = 3.0
+per_design_hpwl_gate_search_pct = 5.0
+per_design_overflow_gate_search_pct = 0.25
+min_design_both_improvement_fraction = 0.0
+# Search parents may be aggregate-improving near-misses; final elite promotion still requires robust per-design behavior.
+require_robust_parent_gate = true
+allow_near_miss_parents = true
+near_miss_max_worst_hpwl_pct = 25.0
+near_miss_max_worst_overflow_pct = 10.0
+near_miss_parent_score_floor = 0.02
+overflow_severe_regression_pct = 10.0
+require_custom_default_gate = false
+
+require_baseline_portfolio_gate = true
+require_baseline_portfolio_pareto = true
+min_baseline_portfolio_effect_pct = 0.25
+min_baseline_behavior_distance_pct = 0.5
+# Evaluator-side only: prefer candidates that Pareto-improve against native DREAMPlace,
+# but keep measured tradeoffs as feedback rather than hiding them from memory.
+native_default_selection_policy = "prefer_pareto"
+native_default_pareto_bonus = 0.02
+custom_default_hpwl_gate_pct = 5.0
+custom_default_overflow_gate_pct = 0.0
+min_custom_default_effect_pct = 0.25
+require_nonzero_routing_term = true
+min_replacement_nonbaseline_terms = 2
+min_abs_routing_coeff = 0.00000001
+route_coeff_cap = 0.01
+route_coeff_grid = [-0.00001, -0.000003, -0.000001, -0.0000003, -0.0000001, -0.00000003, -0.00000001, 0.00000001, 0.00000003, 0.0000001, 0.0000003, 0.000001, 0.000003, 0.00001]
+density_coeff_grid = [1.0]
+wirelength_coeff_grid = [1.0]
+max_calibrated_siblings = 6
+max_generation_attempts = 4
+full_rewrite_after_static_rejections = 2
+escape_parent_after_static_rejections = 2
+reject_baseline_mechanism_clones = true
+min_baseline_mechanism_distance = 0.35
+reject_repeated_negative_mechanisms = true
+min_negative_mechanism_distance = 0.55
+parent_policy = "hpwl_safe_only"
+structured_feedback = true
+router_background = "../../prompts/router_objective_background.md"
+
+initial_presets = [
+  "dreamplace_explicit_wl_density",
+  "dreamplace_wl_density",
+  "dreamplace_density_heavy",
+  "dreamplace_density_135",
+  "dreamplace_wawl_density_bell",
+  "dreamplace_routing_aware_smoke",
+]
+
+[search]
+panel = "../shared_panels/chipbench_search_tier2.toml"
+baseline_presets = [
+  "dreamplace_explicit_wl_density",
+  "dreamplace_wl_density",
+  "dreamplace_wawl_electric",
+  "dreamplace_wawl_density_bell",
+  "dreamplace_lse_density_bell",
+  "dreamplace_density_heavy",
+  "dreamplace_density_135",
+  "dreamplace_routing_aware_smoke",
+]
+
+[final]
+enabled = false
+
+[feedback]
+
+
+

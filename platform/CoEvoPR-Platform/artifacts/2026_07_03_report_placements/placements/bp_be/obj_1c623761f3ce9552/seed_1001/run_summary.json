@@ -1,0 +1,407 @@
+{
+  "coevop_commit": "64e84dd66993c5fb66b2ddfb938551eba1b011b5",
+  "component_summary_json": "{}",
+  "config_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/obj_1c623761f3ce9552/seed_1001/dreamplace_config.json",
+  "custom_grad_norm": 47598.42,
+  "custom_objective_calls": 150,
+  "custom_total": 2736355000.0,
+  "design": "bp_be",
+  "dreamplace_commit": "644c547e75819ee05640c3f88114f66f9b0f88da",
+  "failure_stage": null,
+  "hpwl": 14515120.0,
+  "log_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/obj_1c623761f3ce9552/seed_1001/dreamplace.log",
+  "metrics": {
+    "assertion": null,
+    "custom_objective": {
+      "calls": 150,
+      "component_history": [],
+      "component_summary": {},
+      "last_components": {},
+      "last_grad_norm": 47598.42,
+      "last_terms": {
+        "density_electric": {
+          "normalized": 7.826223009033129e-05,
+          "raw": 130249.6640625
+        },
+        "pin_count_weighted_wl": {
+          "normalized": 2.146120309829712,
+          "raw": 17311776.0
+        },
+        "route_pressure_long": {
+          "normalized": 0.44048845767974854,
+          "raw": 19.657424926757812
+        },
+        "wirelength_wawl": {
+          "normalized": 1.6440967321395874,
+          "raw": 13830267.0
+        }
+      },
+      "last_total": 2736355000.0,
+      "last_weighted_density_raw": 0.01886822,
+      "last_wirelength_raw": 13830270.0,
+      "objective_id": "obj_1c623761f3ce9552",
+      "output_scale": 1664272000.0,
+      "term_history": [
+        {
+          "call": 1,
+          "terms": {
+            "density_electric": {
+              "normalized": 1.0,
+              "raw": 1664272384.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 1.0,
+              "raw": 8066544.5
+            },
+            "route_pressure_long": {
+              "normalized": 1.0,
+              "raw": 44.62642288208008
+            },
+            "wirelength_wawl": {
+              "normalized": 1.0,
+              "raw": 8412076.0
+            }
+          }
+        },
+        {
+          "call": 10,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.007648436818271875,
+              "raw": 12729082.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 8.910185813903809,
+              "raw": 71874408.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.9348167181015015,
+              "raw": 41.717525482177734
+            },
+            "wirelength_wawl": {
+              "normalized": 7.361623764038086,
+              "raw": 61926540.0
+            }
+          }
+        },
+        {
+          "call": 20,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0010124570690095425,
+              "raw": 1685004.25
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 6.716595649719238,
+              "raw": 54179720.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.7736309766769409,
+              "raw": 34.524383544921875
+            },
+            "wirelength_wawl": {
+              "normalized": 5.222248554229736,
+              "raw": 43929952.0
+            }
+          }
+        },
+        {
+          "call": 30,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0003370952035766095,
+              "raw": 561018.25
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 5.287670612335205,
+              "raw": 42653232.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.59908527135849,
+              "raw": 26.73503303527832
+            },
+            "wirelength_wawl": {
+              "normalized": 3.9105560779571533,
+              "raw": 32895894.0
+            }
+          }
+        },
+        {
+          "call": 40,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.00016310250794049352,
+              "raw": 271447.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 4.4659104347229,
+              "raw": 36024464.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.6946622729301453,
+              "raw": 31.000293731689453
+            },
+            "wirelength_wawl": {
+              "normalized": 3.2707464694976807,
+              "raw": 27513768.0
+            }
+          }
+        },
+        {
+          "call": 50,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0001275212998734787,
+              "raw": 212230.171875
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 3.8020808696746826,
+              "raw": 30669656.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.6090465784072876,
+              "raw": 27.179569244384766
+            },
+            "wirelength_wawl": {
+              "normalized": 2.800847291946411,
+              "raw": 23560940.0
+            }
+          }
+        },
+        {
+          "call": 60,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0001221720885951072,
+              "raw": 203327.640625
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 3.2809884548187256,
+              "raw": 26466240.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.4486237168312073,
+              "raw": 20.020471572875977
+            },
+            "wirelength_wawl": {
+              "normalized": 2.428330421447754,
+              "raw": 20427300.0
+            }
+          }
+        },
+        {
+          "call": 70,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.00010793426918098703,
+              "raw": 179632.015625
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.9306490421295166,
+              "raw": 23640212.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.5512176752090454,
+              "raw": 24.598873138427734
+            },
+            "wirelength_wawl": {
+              "normalized": 2.1712095737457275,
+              "raw": 18264380.0
+            }
+          }
+        },
+        {
+          "call": 80,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0001027711623464711,
+              "raw": 171039.203125
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.698996067047119,
+              "raw": 21771572.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.4940687119960785,
+              "raw": 22.048519134521484
+            },
+            "wirelength_wawl": {
+              "normalized": 2.0092179775238037,
+              "raw": 16901694.0
+            }
+          }
+        },
+        {
+          "call": 90,
+          "terms": {
+            "density_electric": {
+              "normalized": 9.239544306183234e-05,
+              "raw": 153771.1875
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.551576614379883,
+              "raw": 20582406.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.47993290424346924,
+              "raw": 21.417688369750977
+            },
+            "wirelength_wawl": {
+              "normalized": 1.9076625108718872,
+              "raw": 16047402.0
+            }
+          }
+        },
+        {
+          "call": 100,
+          "terms": {
+            "density_electric": {
+              "normalized": 8.432706817984581e-05,
+              "raw": 140343.203125
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.4448530673980713,
+              "raw": 19721516.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.4720396399497986,
+              "raw": 21.065441131591797
+            },
+            "wirelength_wawl": {
+              "normalized": 1.8352489471435547,
+              "raw": 15438254.0
+            }
+          }
+        },
+        {
+          "call": 110,
+          "terms": {
+            "density_electric": {
+              "normalized": 9.025710460264236e-05,
+              "raw": 150212.40625
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.351835012435913,
+              "raw": 18971182.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.516478955745697,
+              "raw": 23.048608779907227
+            },
+            "wirelength_wawl": {
+              "normalized": 1.7742271423339844,
+              "raw": 14924934.0
+            }
+          }
+        },
+        {
+          "call": 120,
+          "terms": {
+            "density_electric": {
+              "normalized": 8.222661563195288e-05,
+              "raw": 136847.484375
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.286299228668213,
+              "raw": 18442534.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.8729233741760254,
+              "raw": 38.955448150634766
+            },
+            "wirelength_wawl": {
+              "normalized": 1.7309173345565796,
+              "raw": 14560608.0
+            }
+          }
+        },
+        {
+          "call": 130,
+          "terms": {
+            "density_electric": {
+              "normalized": 8.081865234998986e-05,
+              "raw": 134504.25
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.228457450866699,
+              "raw": 17975952.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.4883788824081421,
+              "raw": 21.79460334777832
+            },
+            "wirelength_wawl": {
+              "normalized": 1.6945637464523315,
+              "raw": 14254799.0
+            }
+          }
+        },
+        {
+          "call": 140,
+          "terms": {
+            "density_electric": {
+              "normalized": 7.932723383419216e-05,
+              "raw": 132022.125
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.182868719100952,
+              "raw": 17608208.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.7050513029098511,
+              "raw": 31.463918685913086
+            },
+            "wirelength_wawl": {
+              "normalized": 1.6665419340133667,
+              "raw": 14019077.0
+            }
+          }
+        },
+        {
+          "call": 150,
+          "terms": {
+            "density_electric": {
+              "normalized": 7.826223009033129e-05,
+              "raw": 130249.6640625
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 2.146120309829712,
+              "raw": 17311776.0
+            },
+            "route_pressure_long": {
+              "normalized": 0.44048845767974854,
+              "raw": 19.657424926757812
+            },
+            "wirelength_wawl": {
+              "normalized": 1.6440967321395874,
+              "raw": 13830267.0
+            }
+          }
+        }
+      ],
+      "term_scales": {
+        "density_electric": 1664272000.0,
+        "pin_count_weighted_wl": 8066544.0,
+        "route_pressure_long": 44.62642,
+        "wirelength_wawl": 8412076.0
+      }
+    },
+    "last": {
+      "hpwl": 14515120.0,
+      "objective": 2717704000.0,
+      "overflow": 0.3030599
+    },
+    "missing_input_file": null,
+    "timed_out": false
+  },
+  "objective_id": "obj_1c623761f3ce9552",
+  "output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/obj_1c623761f3ce9552/seed_1001/results/macro_placed/macro_placed.gp.def",
+  "overflow": 0.3030599,
+  "returncode": 0,
+  "run_dir": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/obj_1c623761f3ce9552/seed_1001",
+  "runtime_seconds": 10.309398174285889,
+  "seed": 1001,
+  "status": "success",
+  "tns": null,
+  "wns": null
+}

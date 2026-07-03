@@ -1,0 +1,125 @@
+# Design-specific OpenEvolve/DREAMPlace run with held-out generalization.
+#
+# Main methodology:
+# - optimize/evolve on bp_fe only,
+# - use measured DREAMPlace placement feedback for local OpenEvolve memory,
+# - after evolution, evaluate selected generated objectives on ethernet and
+#   isa_npu as a held-out generalization panel,
+# - do not feed held-out generalization metrics back into LLM prompts.
+
+provider = "openai"
+term_scope = "dreamplace_replacement"
+objective_mode = "replacement"
+mutation_mode = "diff"
+
+target_designs = ["bp_fe"]
+
+max_iterations = 10
+samples_per_iteration = 3
+population_size = 40
+archive_size = 8
+num_islands = 3
+map_elites_enabled = true
+feature_bins = 8
+feature_dimensions = ["complexity", "mechanism_family", "hpwl_delta_bucket", "overflow_delta_bucket", "opentimer_wns_delta_bucket"]
+migration_interval = 20
+migration_rate = 0.10
+migration_topology = "ring"
+checkpoint_interval = 1
+num_top_programs = 2
+num_diverse_programs = 2
+seed = 133
+
+evaluate_initial_presets = true
+primary_baseline = "default"
+parent_policy = "hpwl_safe_only"
+structured_feedback = true
+router_background = "../../prompts/router_objective_background.md"
+
+severe_regression_pct = 10.0
+hpwl_gate_search_pct = 5.0
+hpwl_gate_elite_pct = 3.0
+per_design_hpwl_gate_search_pct = 5.0
+per_design_overflow_gate_search_pct = 0.25
+min_design_both_improvement_fraction = 0.0
+require_robust_parent_gate = true
+allow_near_miss_parents = true
+near_miss_max_worst_hpwl_pct = 25.0
+near_miss_max_worst_overflow_pct = 10.0
+near_miss_parent_score_floor = 0.02
+overflow_severe_regression_pct = 10.0
+
+require_custom_default_gate = false
+require_baseline_portfolio_gate = false
+require_baseline_portfolio_pareto = false
+min_baseline_portfolio_effect_pct = 0.25
+min_baseline_behavior_distance_pct = 0.5
+native_default_selection_policy = "prefer_pareto"
+native_default_pareto_bonus = 0.02
+custom_default_hpwl_gate_pct = 5.0
+custom_default_overflow_gate_pct = 0.0
+min_custom_default_effect_pct = 0.25
+
+require_nonzero_routing_term = true
+min_replacement_nonbaseline_terms = 2
+min_abs_routing_coeff = 0.00000001
+route_coeff_cap = 0.01
+route_coeff_grid = [-0.00001, -0.000003, -0.000001, -0.0000003, -0.0000001, -0.00000003, -0.00000001, 0.00000001, 0.00000003, 0.0000001, 0.0000003, 0.000001, 0.000003, 0.00001]
+density_coeff_grid = [1.0]
+wirelength_coeff_grid = [1.0]
+max_calibrated_siblings = 6
+max_generation_attempts = 4
+full_rewrite_after_static_rejections = 2
+escape_parent_after_static_rejections = 2
+reject_baseline_mechanism_clones = true
+min_baseline_mechanism_distance = 0.35
+reject_repeated_negative_mechanisms = true
+min_negative_mechanism_distance = 0.55
+
+initial_presets = [
+  "dreamplace_explicit_wl_density",
+  "dreamplace_wawl_electric",
+  "dreamplace_wawl_density_bell",
+  "dreamplace_lse_density_bell",
+  "dreamplace_density_135",
+  "dreamplace_routing_aware_smoke",
+  "dreamplace_route_pressure_long",
+  "dreamplace_pin_count_weighted_wl",
+]
+
+[search]
+panel = "../shared_panels/chipbench_search_tier2.toml"
+baseline_presets = [
+  "dreamplace_explicit_wl_density",
+  "dreamplace_wawl_electric",
+  "dreamplace_wawl_density_bell",
+  "dreamplace_lse_density_bell",
+  "dreamplace_density_135",
+  "dreamplace_routing_aware_smoke",
+  "dreamplace_route_pressure_long",
+  "dreamplace_pin_count_weighted_wl",
+]
+
+[design_profile]
+enabled = true
+include_file_stats = true
+
+[generalization]
+enabled = true
+panel = "../shared_panels/chipbench_generalization_tier2_fast.toml"
+top_k = 4
+candidate_policy = "elite_or_aggregate"
+baseline_presets = [
+  "dreamplace_explicit_wl_density",
+  "dreamplace_wawl_electric",
+  "dreamplace_wawl_density_bell",
+  "dreamplace_lse_density_bell",
+  "dreamplace_density_135",
+  "dreamplace_routing_aware_smoke",
+]
+
+[final]
+enabled = false
+
+[tier3]
+enabled = false

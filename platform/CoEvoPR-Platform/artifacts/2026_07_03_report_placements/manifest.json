@@ -1,0 +1,376 @@
+{
+  "artifact": "2026_07_03_report_placements",
+  "purpose": "Compressed placement DEFs and metrics backing the 2026-07-03 progress report.",
+  "selection_policy": "default plus the selected reported LLM/objective for each design, seeds 1000/1001/1002",
+  "designs": {
+    "bp_fe": {
+      "objectives": [
+        "default",
+        "obj_34cad18eb2fc5f98"
+      ],
+      "placements": [
+        {
+          "design": "bp_fe",
+          "objective_id": "default",
+          "seed": 1000,
+          "def_gz": "placements/bp_fe/default/seed_1000/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/default/seed_1000/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "0608e916639e77a0a36af674e333c2d51db7261225ddbd91e9b81b6508a2b60b",
+          "compressed_def_sha256": "5395aa3df0798fe1aa5306403488c6412ce6da2ed7ceb197736560ab29add41f",
+          "original_def_bytes": 9057984,
+          "compressed_def_bytes": 812469,
+          "dreamplace_config": "placements/bp_fe/default/seed_1000/dreamplace_config.json",
+          "run_summary": "placements/bp_fe/default/seed_1000/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "bp_fe",
+          "objective_id": "default",
+          "seed": 1001,
+          "def_gz": "placements/bp_fe/default/seed_1001/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/default/seed_1001/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "1c3e4584afc8c745d58070eb36345c0351b697b7432745c0fe21dbaf2f73fc03",
+          "compressed_def_sha256": "d65f8960ebc7a371664b4a4cf65c3660e2c494177add21b1dcbe2dca3256b07a",
+          "original_def_bytes": 9057935,
+          "compressed_def_bytes": 812777,
+          "dreamplace_config": "placements/bp_fe/default/seed_1001/dreamplace_config.json",
+          "run_summary": "placements/bp_fe/default/seed_1001/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "bp_fe",
+          "objective_id": "default",
+          "seed": 1002,
+          "def_gz": "placements/bp_fe/default/seed_1002/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/default/seed_1002/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "fb873587885178e236b34d63de93c74f604b4171ce06f44851efceb8c507d073",
+          "compressed_def_sha256": "b397f3d1de928f4d555f37c325ca2c6aa04c35afa5cc9852b270a772b3f8eabf",
+          "original_def_bytes": 9057995,
+          "compressed_def_bytes": 812803,
+          "dreamplace_config": "placements/bp_fe/default/seed_1002/dreamplace_config.json",
+          "run_summary": "placements/bp_fe/default/seed_1002/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "bp_fe",
+          "objective_id": "obj_34cad18eb2fc5f98",
+          "seed": 1000,
+          "def_gz": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1000/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/obj_34cad18eb2fc5f98/seed_1000/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "f8d0903c00482c952a4fd1788cc59789fe8620a766673e374ca296998760b3a6",
+          "compressed_def_sha256": "47fa891006051761b2ebcdfb84531c28655df1078c26a1d68d09500f909bcdae",
+          "original_def_bytes": 9058375,
+          "compressed_def_bytes": 813688,
+          "dreamplace_config": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1000/dreamplace_config.json",
+          "run_summary": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1000/run_summary.json",
+          "objective_spec": "objectives/bp_fe/obj_34cad18eb2fc5f98.json"
+        },
+        {
+          "design": "bp_fe",
+          "objective_id": "obj_34cad18eb2fc5f98",
+          "seed": 1001,
+          "def_gz": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1001/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/obj_34cad18eb2fc5f98/seed_1001/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "c30838178e5429a3532b06c5c73c7b9410fea29b4222a17e97341906b7f10b54",
+          "compressed_def_sha256": "6bd2b726b45414bdf4155b8a8f16e9de04cc1a85c03f5c10c1353bc3e9010ab9",
+          "original_def_bytes": 9059747,
+          "compressed_def_bytes": 794529,
+          "dreamplace_config": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1001/dreamplace_config.json",
+          "run_summary": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1001/run_summary.json",
+          "objective_spec": "objectives/bp_fe/obj_34cad18eb2fc5f98.json"
+        },
+        {
+          "design": "bp_fe",
+          "objective_id": "obj_34cad18eb2fc5f98",
+          "seed": 1002,
+          "def_gz": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1002/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/obj_34cad18eb2fc5f98/seed_1002/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "30c4b7cf04dbcdb2b5e544b87331bd18795fd0e57986d904c74b5e49e7e9e4ea",
+          "compressed_def_sha256": "14cc8ecf6ae3b133fb534eee62bfe42c6e253592f0e414564008583a6588c340",
+          "original_def_bytes": 9059335,
+          "compressed_def_bytes": 795090,
+          "dreamplace_config": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1002/dreamplace_config.json",
+          "run_summary": "placements/bp_fe/obj_34cad18eb2fc5f98/seed_1002/run_summary.json",
+          "objective_spec": "objectives/bp_fe/obj_34cad18eb2fc5f98.json"
+        }
+      ]
+    },
+    "bp_be": {
+      "objectives": [
+        "default",
+        "obj_1c623761f3ce9552"
+      ],
+      "placements": [
+        {
+          "design": "bp_be",
+          "objective_id": "default",
+          "seed": 1000,
+          "def_gz": "placements/bp_be/default/seed_1000/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/default/seed_1000/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "b8fd8d11ecbf5ca48708a1039ae42befd03c9420d47f365040804b0d5f1575fe",
+          "compressed_def_sha256": "7163e59c32c580c043585466a3cc06327d463663726f3ae32e7c8020ed2bb5e5",
+          "original_def_bytes": 15068716,
+          "compressed_def_bytes": 1294375,
+          "dreamplace_config": "placements/bp_be/default/seed_1000/dreamplace_config.json",
+          "run_summary": "placements/bp_be/default/seed_1000/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "bp_be",
+          "objective_id": "default",
+          "seed": 1001,
+          "def_gz": "placements/bp_be/default/seed_1001/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/default/seed_1001/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "2722a5d22ad7e56a2f38b092b16a1e6250de6cb8e1212311f6e4b36cf8c76c15",
+          "compressed_def_sha256": "c8b225eb2894fa6dcc94a78dd56d59168bcb10b96f4a43582b4f557b03319f2d",
+          "original_def_bytes": 15068615,
+          "compressed_def_bytes": 1294108,
+          "dreamplace_config": "placements/bp_be/default/seed_1001/dreamplace_config.json",
+          "run_summary": "placements/bp_be/default/seed_1001/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "bp_be",
+          "objective_id": "default",
+          "seed": 1002,
+          "def_gz": "placements/bp_be/default/seed_1002/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/default/seed_1002/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "f4309b3fe04ad029c47179e47d6b993c184ae1e35584f980d39ef8ef18633cbb",
+          "compressed_def_sha256": "c41961b5ddb795eb5159d4eff291d01d6d8b560ff9b9abeadc25787af0cae3b1",
+          "original_def_bytes": 15068722,
+          "compressed_def_bytes": 1294398,
+          "dreamplace_config": "placements/bp_be/default/seed_1002/dreamplace_config.json",
+          "run_summary": "placements/bp_be/default/seed_1002/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "bp_be",
+          "objective_id": "obj_1c623761f3ce9552",
+          "seed": 1000,
+          "def_gz": "placements/bp_be/obj_1c623761f3ce9552/seed_1000/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/obj_1c623761f3ce9552/seed_1000/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "8c0a67050fbbcb20ce695f6909f22800bbd7444b165737f74cdf4c7d4ab14f6e",
+          "compressed_def_sha256": "744748e5daafcf02ffadb953471c85410620f42a8e89ec8e5d28e6af237f2a7c",
+          "original_def_bytes": 15056163,
+          "compressed_def_bytes": 1254921,
+          "dreamplace_config": "placements/bp_be/obj_1c623761f3ce9552/seed_1000/dreamplace_config.json",
+          "run_summary": "placements/bp_be/obj_1c623761f3ce9552/seed_1000/run_summary.json",
+          "objective_spec": "objectives/bp_be/obj_1c623761f3ce9552.json"
+        },
+        {
+          "design": "bp_be",
+          "objective_id": "obj_1c623761f3ce9552",
+          "seed": 1001,
+          "def_gz": "placements/bp_be/obj_1c623761f3ce9552/seed_1001/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/obj_1c623761f3ce9552/seed_1001/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "dc398b1a2772c2831bc309c09b207690b006f9fa1e11ba96504dc2afe5b44ba6",
+          "compressed_def_sha256": "5e78ce8c757b26d1db5a33c15c5bb902ec38a7d1caf824610c678449c1119fac",
+          "original_def_bytes": 15056810,
+          "compressed_def_bytes": 1258713,
+          "dreamplace_config": "placements/bp_be/obj_1c623761f3ce9552/seed_1001/dreamplace_config.json",
+          "run_summary": "placements/bp_be/obj_1c623761f3ce9552/seed_1001/run_summary.json",
+          "objective_spec": "objectives/bp_be/obj_1c623761f3ce9552.json"
+        },
+        {
+          "design": "bp_be",
+          "objective_id": "obj_1c623761f3ce9552",
+          "seed": 1002,
+          "def_gz": "placements/bp_be/obj_1c623761f3ce9552/seed_1002/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/obj_1c623761f3ce9552/seed_1002/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "d145a8cfcb2acb6866095a0a2227b754bfc760519844847309c1055888fa929d",
+          "compressed_def_sha256": "68de31b3d89ecaeec952ed22c7d990e69d5ad750e687e981405b1000d48bae33",
+          "original_def_bytes": 15058393,
+          "compressed_def_bytes": 1281514,
+          "dreamplace_config": "placements/bp_be/obj_1c623761f3ce9552/seed_1002/dreamplace_config.json",
+          "run_summary": "placements/bp_be/obj_1c623761f3ce9552/seed_1002/run_summary.json",
+          "objective_spec": "objectives/bp_be/obj_1c623761f3ce9552.json"
+        }
+      ]
+    },
+    "ethernet": {
+      "objectives": [
+        "default",
+        "obj_705dbe679dcdb0f7"
+      ],
+      "placements": [
+        {
+          "design": "ethernet",
+          "objective_id": "default",
+          "seed": 1000,
+          "def_gz": "placements/ethernet/default/seed_1000/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/default/seed_1000/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "fd0e9f9e7de9c294fd93e0095226031e55f8058b754419387418c3d1362bad71",
+          "compressed_def_sha256": "4a0d8e9e0f092ab8527d0a264851418c9a9969d3661ec22475831eb64639daeb",
+          "original_def_bytes": 9088234,
+          "compressed_def_bytes": 830498,
+          "dreamplace_config": "placements/ethernet/default/seed_1000/dreamplace_config.json",
+          "run_summary": "placements/ethernet/default/seed_1000/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "ethernet",
+          "objective_id": "default",
+          "seed": 1001,
+          "def_gz": "placements/ethernet/default/seed_1001/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/default/seed_1001/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "4c424b2fc3fb1313c8064fec2b7c3a1cc9c0a1bbe0baab51ec0e1837a8968374",
+          "compressed_def_sha256": "cac59140d3d38f04d863791b5a38a2f939c2e327afa491a523c4bdc0556685c9",
+          "original_def_bytes": 9088099,
+          "compressed_def_bytes": 827243,
+          "dreamplace_config": "placements/ethernet/default/seed_1001/dreamplace_config.json",
+          "run_summary": "placements/ethernet/default/seed_1001/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "ethernet",
+          "objective_id": "default",
+          "seed": 1002,
+          "def_gz": "placements/ethernet/default/seed_1002/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/default/seed_1002/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "96e4566530dabcc9bafb92e98767ee51d3bc567504b773dfb76e385201411e78",
+          "compressed_def_sha256": "f62fe65f57a64326604b848f572f46657f0694abfc8fa63ea01f78c1074d628a",
+          "original_def_bytes": 9088047,
+          "compressed_def_bytes": 826566,
+          "dreamplace_config": "placements/ethernet/default/seed_1002/dreamplace_config.json",
+          "run_summary": "placements/ethernet/default/seed_1002/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "ethernet",
+          "objective_id": "obj_705dbe679dcdb0f7",
+          "seed": 1000,
+          "def_gz": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1000/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/obj_705dbe679dcdb0f7/seed_1000/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "7913c7a33b4f54e8969eb19b8b972d4f2e7c2cfc7773759e0a407d5863d836bf",
+          "compressed_def_sha256": "2eac015e2612aee16f4adfec0892f4fe6033d4e4cc8ec9fce3cfc37c93021531",
+          "original_def_bytes": 9088056,
+          "compressed_def_bytes": 816190,
+          "dreamplace_config": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1000/dreamplace_config.json",
+          "run_summary": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1000/run_summary.json",
+          "objective_spec": "objectives/ethernet/obj_705dbe679dcdb0f7.json"
+        },
+        {
+          "design": "ethernet",
+          "objective_id": "obj_705dbe679dcdb0f7",
+          "seed": 1001,
+          "def_gz": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1001/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/obj_705dbe679dcdb0f7/seed_1001/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "e73c46a65fc432bb3536748139d7c510df1073dabf4ef5a419393911281c99c8",
+          "compressed_def_sha256": "0f138cd9bc904d2db77432165c2a1ac6c8543ac143b052a0da39a917376eff89",
+          "original_def_bytes": 9088173,
+          "compressed_def_bytes": 817216,
+          "dreamplace_config": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1001/dreamplace_config.json",
+          "run_summary": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1001/run_summary.json",
+          "objective_spec": "objectives/ethernet/obj_705dbe679dcdb0f7.json"
+        },
+        {
+          "design": "ethernet",
+          "objective_id": "obj_705dbe679dcdb0f7",
+          "seed": 1002,
+          "def_gz": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1002/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/obj_705dbe679dcdb0f7/seed_1002/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "66744146fcf4d799212051f2779b11cab432d01e0ad3a22e3298eb3e578af160",
+          "compressed_def_sha256": "08e152982ff22624349c42a8fe28222c094ef679e11cfa27252bb926aa7c1170",
+          "original_def_bytes": 9087974,
+          "compressed_def_bytes": 813178,
+          "dreamplace_config": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1002/dreamplace_config.json",
+          "run_summary": "placements/ethernet/obj_705dbe679dcdb0f7/seed_1002/run_summary.json",
+          "objective_spec": "objectives/ethernet/obj_705dbe679dcdb0f7.json"
+        }
+      ]
+    },
+    "swerv_wrapper": {
+      "objectives": [
+        "default",
+        "obj_4fd265b50589cb27"
+      ],
+      "placements": [
+        {
+          "design": "swerv_wrapper",
+          "objective_id": "default",
+          "seed": 1000,
+          "def_gz": "placements/swerv_wrapper/default/seed_1000/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/default/seed_1000/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "945253260f555248742209bb6bd35c6ff56ef20172763f0a53171ae20a5081f3",
+          "compressed_def_sha256": "fc7e8030d0fa53aa0f8109ec12f0edd172e94ce569d42b3784f778b1b4b5f1bc",
+          "original_def_bytes": 26472925,
+          "compressed_def_bytes": 2441063,
+          "dreamplace_config": "placements/swerv_wrapper/default/seed_1000/dreamplace_config.json",
+          "run_summary": "placements/swerv_wrapper/default/seed_1000/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "swerv_wrapper",
+          "objective_id": "default",
+          "seed": 1001,
+          "def_gz": "placements/swerv_wrapper/default/seed_1001/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/default/seed_1001/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "252125b22221791241b59453a074d0a12b8ecf165ef676e805924c0eccfd5af6",
+          "compressed_def_sha256": "54e47867990d2e735e4b7a08c921566424a8d6c23a81dbaf3699db6e5b4535db",
+          "original_def_bytes": 26472819,
+          "compressed_def_bytes": 2442021,
+          "dreamplace_config": "placements/swerv_wrapper/default/seed_1001/dreamplace_config.json",
+          "run_summary": "placements/swerv_wrapper/default/seed_1001/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "swerv_wrapper",
+          "objective_id": "default",
+          "seed": 1002,
+          "def_gz": "placements/swerv_wrapper/default/seed_1002/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/default/seed_1002/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "a59810525420b0eb685f7c6bd2cb94f4dd3fad4e3cca95b0b41651ea23539e86",
+          "compressed_def_sha256": "5bfe820667906e82365883e78733b051424cb27338bc7ea5111851797c2176c3",
+          "original_def_bytes": 26472632,
+          "compressed_def_bytes": 2441078,
+          "dreamplace_config": "placements/swerv_wrapper/default/seed_1002/dreamplace_config.json",
+          "run_summary": "placements/swerv_wrapper/default/seed_1002/run_summary.json",
+          "objective_spec": null
+        },
+        {
+          "design": "swerv_wrapper",
+          "objective_id": "obj_4fd265b50589cb27",
+          "seed": 1000,
+          "def_gz": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1000/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/obj_4fd265b50589cb27/seed_1000/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "987e90556c3713fb322d6349f79a4b5830d314506f787c2b56bdcc4bc8b98383",
+          "compressed_def_sha256": "ebf61511bd70d1748309e339ea1b93760e6ba2125fce60bbb9159c770da02e64",
+          "original_def_bytes": 26474793,
+          "compressed_def_bytes": 2459608,
+          "dreamplace_config": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1000/dreamplace_config.json",
+          "run_summary": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1000/run_summary.json",
+          "objective_spec": "objectives/swerv_wrapper/obj_4fd265b50589cb27.json"
+        },
+        {
+          "design": "swerv_wrapper",
+          "objective_id": "obj_4fd265b50589cb27",
+          "seed": 1001,
+          "def_gz": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1001/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/obj_4fd265b50589cb27/seed_1001/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "651e63b0e8fbf46206d59fac0778928662493a07e5518bbee20d13831f201b43",
+          "compressed_def_sha256": "9c35c9757bf2c2bfdc21312d451aecaf48541e74631292c5c8f7eefa34a586c5",
+          "original_def_bytes": 26476356,
+          "compressed_def_bytes": 2462107,
+          "dreamplace_config": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1001/dreamplace_config.json",
+          "run_summary": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1001/run_summary.json",
+          "objective_spec": "objectives/swerv_wrapper/obj_4fd265b50589cb27.json"
+        },
+        {
+          "design": "swerv_wrapper",
+          "objective_id": "obj_4fd265b50589cb27",
+          "seed": 1002,
+          "def_gz": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1002/macro_placed.gp.def.gz",
+          "source_output_artifact": "runs/generalization_chipbench/serious_final_no_timeout_swerv_wrapper/swerv_wrapper/tier2_final/swerv_wrapper/obj_4fd265b50589cb27/seed_1002/results/macro_placed/macro_placed.gp.def",
+          "original_def_sha256": "ef48261574c5b0aeacb3c0a6db1cd2332fa06361de8f24bab9a08c2ce0deb4a9",
+          "compressed_def_sha256": "329753df1124a246be097ad0f52ea7e5e6921cbb825df7d8086d3674ab79d5ce",
+          "original_def_bytes": 26473319,
+          "compressed_def_bytes": 2437247,
+          "dreamplace_config": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1002/dreamplace_config.json",
+          "run_summary": "placements/swerv_wrapper/obj_4fd265b50589cb27/seed_1002/run_summary.json",
+          "objective_spec": "objectives/swerv_wrapper/obj_4fd265b50589cb27.json"
+        }
+      ]
+    }
+  },
+  "missing_objective_specs": []
+}

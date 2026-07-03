@@ -1,0 +1,11 @@
+seeds = [1000]
+iterations = 1
+gpu = 1
+timeout_seconds = 900
+log_interval = 1
+timing_mode = "compatibility_only"
+
+[[designs]]
+name = "superblue1_ot"
+base_config = "${HOME}/DREAMPlace/install/test/iccad2015.ot/superblue1.json"
+timing_mode = "compatibility_only"

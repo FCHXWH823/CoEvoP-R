@@ -1,0 +1,470 @@
+{
+  "coevop_commit": "64e84dd66993c5fb66b2ddfb938551eba1b011b5",
+  "component_summary_json": "{}",
+  "config_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/obj_34cad18eb2fc5f98/seed_1001/dreamplace_config.json",
+  "custom_grad_norm": 202.7443,
+  "custom_objective_calls": 180,
+  "custom_total": 9124843.0,
+  "design": "bp_fe",
+  "dreamplace_commit": "644c547e75819ee05640c3f88114f66f9b0f88da",
+  "failure_stage": null,
+  "hpwl": 9619562.0,
+  "log_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/obj_34cad18eb2fc5f98/seed_1001/dreamplace.log",
+  "metrics": {
+    "assertion": null,
+    "custom_objective": {
+      "calls": 180,
+      "component_history": [],
+      "component_summary": {},
+      "last_components": {},
+      "last_grad_norm": 202.7443,
+      "last_terms": {
+        "density": {
+          "normalized": 4.877790343016386e-05,
+          "raw": 49431.4375
+        },
+        "pin_density_pnorm": {
+          "normalized": 1.0063639879226685,
+          "raw": 23.84353256225586
+        },
+        "soft_rudy_pnorm": {
+          "normalized": 1.0605437755584717,
+          "raw": 15.728357315063477
+        },
+        "wirelength": {
+          "normalized": 1.2827857732772827,
+          "raw": 9124501.0
+        }
+      },
+      "last_total": 9124843.0,
+      "last_weighted_density_raw": 0.004035381,
+      "last_wirelength_raw": 9124501.0,
+      "objective_id": "obj_34cad18eb2fc5f98",
+      "output_scale": 7113036.0,
+      "term_history": [
+        {
+          "call": 1,
+          "terms": {
+            "density": {
+              "normalized": 1.0,
+              "raw": 1013398144.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.0,
+              "raw": 23.692750930786133
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.0,
+              "raw": 14.830465316772461
+            },
+            "wirelength": {
+              "normalized": 1.0,
+              "raw": 7113036.0
+            }
+          }
+        },
+        {
+          "call": 10,
+          "terms": {
+            "density": {
+              "normalized": 0.07891909778118134,
+              "raw": 79976464.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.5668771266937256,
+              "raw": 37.12363052368164
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.7700295448303223,
+              "raw": 26.250362396240234
+            },
+            "wirelength": {
+              "normalized": 3.971510887145996,
+              "raw": 28249500.0
+            }
+          }
+        },
+        {
+          "call": 20,
+          "terms": {
+            "density": {
+              "normalized": 0.0011766207171604037,
+              "raw": 1192385.25
+            },
+            "pin_density_pnorm": {
+              "normalized": 4.1813788414001465,
+              "raw": 99.06836700439453
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 4.72348165512085,
+              "raw": 70.05142974853516
+            },
+            "wirelength": {
+              "normalized": 3.1392710208892822,
+              "raw": 22329748.0
+            }
+          }
+        },
+        {
+          "call": 30,
+          "terms": {
+            "density": {
+              "normalized": 0.00030272017465904355,
+              "raw": 306776.0625
+            },
+            "pin_density_pnorm": {
+              "normalized": 4.1976094245910645,
+              "raw": 99.45291137695312
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 4.741847991943359,
+              "raw": 70.32381439208984
+            },
+            "wirelength": {
+              "normalized": 2.36075758934021,
+              "raw": 16792154.0
+            }
+          }
+        },
+        {
+          "call": 40,
+          "terms": {
+            "density": {
+              "normalized": 0.00011902258120244369,
+              "raw": 120617.265625
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.3945683240890503,
+              "raw": 33.041160583496094
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.575240969657898,
+              "raw": 23.361557006835938
+            },
+            "wirelength": {
+              "normalized": 1.9438670873641968,
+              "raw": 13826796.0
+            }
+          }
+        },
+        {
+          "call": 50,
+          "terms": {
+            "density": {
+              "normalized": 7.584715058328584e-05,
+              "raw": 76863.359375
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.2412244081497192,
+              "raw": 29.40802001953125
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.3964624404907227,
+              "raw": 20.710187911987305
+            },
+            "wirelength": {
+              "normalized": 1.7472666501998901,
+              "raw": 12428370.0
+            }
+          }
+        },
+        {
+          "call": 60,
+          "terms": {
+            "density": {
+              "normalized": 7.69603720982559e-05,
+              "raw": 77991.5
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.1936265230178833,
+              "raw": 28.280296325683594
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.3481202125549316,
+              "raw": 19.993249893188477
+            },
+            "wirelength": {
+              "normalized": 1.610625147819519,
+              "raw": 11456434.0
+            }
+          }
+        },
+        {
+          "call": 70,
+          "terms": {
+            "density": {
+              "normalized": 7.45246943552047e-05,
+              "raw": 75523.1875
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.6780117750167847,
+              "raw": 39.7567138671875
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.8955636024475098,
+              "raw": 28.112091064453125
+            },
+            "wirelength": {
+              "normalized": 1.4849295616149902,
+              "raw": 10562357.0
+            }
+          }
+        },
+        {
+          "call": 80,
+          "terms": {
+            "density": {
+              "normalized": 7.204763824120164e-05,
+              "raw": 73012.9453125
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.8073233366012573,
+              "raw": 42.82046127319336
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.701716661453247,
+              "raw": 25.23724937438965
+            },
+            "wirelength": {
+              "normalized": 1.4306241273880005,
+              "raw": 10176081.0
+            }
+          }
+        },
+        {
+          "call": 90,
+          "terms": {
+            "density": {
+              "normalized": 6.61460289848037e-05,
+              "raw": 67032.265625
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.1560235023498535,
+              "raw": 27.38937759399414
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.3057035207748413,
+              "raw": 19.36419105529785
+            },
+            "wirelength": {
+              "normalized": 1.3994020223617554,
+              "raw": 9953997.0
+            }
+          }
+        },
+        {
+          "call": 100,
+          "terms": {
+            "density": {
+              "normalized": 6.257022323552519e-05,
+              "raw": 63408.546875
+            },
+            "pin_density_pnorm": {
+              "normalized": 4.039640426635742,
+              "raw": 95.71018981933594
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 4.563398361206055,
+              "raw": 67.67732238769531
+            },
+            "wirelength": {
+              "normalized": 1.3529906272888184,
+              "raw": 9623871.0
+            }
+          }
+        },
+        {
+          "call": 110,
+          "terms": {
+            "density": {
+              "normalized": 5.772586155217141e-05,
+              "raw": 58499.28125
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.9806535243988037,
+              "raw": 70.61988067626953
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 3.367098569869995,
+              "raw": 49.935638427734375
+            },
+            "wirelength": {
+              "normalized": 1.3372656106948853,
+              "raw": 9512018.0
+            }
+          }
+        },
+        {
+          "call": 120,
+          "terms": {
+            "density": {
+              "normalized": 5.650572347803973e-05,
+              "raw": 57262.796875
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.4864909648895264,
+              "raw": 35.219058990478516
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.677775502204895,
+              "raw": 24.882190704345703
+            },
+            "wirelength": {
+              "normalized": 1.3206632137298584,
+              "raw": 9393925.0
+            }
+          }
+        },
+        {
+          "call": 130,
+          "terms": {
+            "density": {
+              "normalized": 5.4632615501759574e-05,
+              "raw": 55364.58984375
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.2405362129211426,
+              "raw": 53.084468841552734
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 2.531022310256958,
+              "raw": 37.53623962402344
+            },
+            "wirelength": {
+              "normalized": 1.3030694723129272,
+              "raw": 9268780.0
+            }
+          }
+        },
+        {
+          "call": 140,
+          "terms": {
+            "density": {
+              "normalized": 5.373624662752263e-05,
+              "raw": 54456.2109375
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.1536078453063965,
+              "raw": 27.332143783569336
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.2749284505844116,
+              "raw": 18.90778160095215
+            },
+            "wirelength": {
+              "normalized": 1.2853881120681763,
+              "raw": 9143012.0
+            }
+          }
+        },
+        {
+          "call": 150,
+          "terms": {
+            "density": {
+              "normalized": 5.184203837416135e-05,
+              "raw": 52536.625
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.0090045928955078,
+              "raw": 23.90609359741211
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.0919218063354492,
+              "raw": 16.193708419799805
+            },
+            "wirelength": {
+              "normalized": 1.294142246246338,
+              "raw": 9205280.0
+            }
+          }
+        },
+        {
+          "call": 160,
+          "terms": {
+            "density": {
+              "normalized": 4.9871734518092126e-05,
+              "raw": 50539.921875
+            },
+            "pin_density_pnorm": {
+              "normalized": 3.44698166847229,
+              "raw": 81.6684799194336
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 3.8938992023468018,
+              "raw": 57.74833679199219
+            },
+            "wirelength": {
+              "normalized": 1.2844113111495972,
+              "raw": 9136064.0
+            }
+          }
+        },
+        {
+          "call": 170,
+          "terms": {
+            "density": {
+              "normalized": 4.937494668411091e-05,
+              "raw": 50036.48046875
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.3422167301177979,
+              "raw": 31.80080795288086
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.506788969039917,
+              "raw": 22.34638214111328
+            },
+            "wirelength": {
+              "normalized": 1.2860615253448486,
+              "raw": 9147802.0
+            }
+          }
+        },
+        {
+          "call": 180,
+          "terms": {
+            "density": {
+              "normalized": 4.877790343016386e-05,
+              "raw": 49431.4375
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.0063639879226685,
+              "raw": 23.84353256225586
+            },
+            "soft_rudy_pnorm": {
+              "normalized": 1.0605437755584717,
+              "raw": 15.728357315063477
+            },
+            "wirelength": {
+              "normalized": 1.2827857732772827,
+              "raw": 9124501.0
+            }
+          }
+        }
+      ],
+      "term_scales": {
+        "density": 1013398000.0,
+        "pin_density_pnorm": 23.69275,
+        "soft_rudy_pnorm": 14.83047,
+        "wirelength": 7113036.0
+      }
+    },
+    "last": {
+      "hpwl": 9619562.0,
+      "objective": 9121236.0,
+      "overflow": 0.2871504
+    },
+    "missing_input_file": null,
+    "timed_out": false
+  },
+  "objective_id": "obj_34cad18eb2fc5f98",
+  "output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/obj_34cad18eb2fc5f98/seed_1001/results/macro_placed/macro_placed.gp.def",
+  "overflow": 0.2871504,
+  "returncode": 0,
+  "run_dir": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/obj_34cad18eb2fc5f98/seed_1001",
+  "runtime_seconds": 9.757710933685303,
+  "seed": 1001,
+  "status": "success",
+  "tns": null,
+  "wns": null
+}

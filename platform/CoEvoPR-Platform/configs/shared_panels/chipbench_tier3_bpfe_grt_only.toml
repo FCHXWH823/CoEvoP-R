@@ -1,0 +1,19 @@
+# Global-route-only OpenROAD/ChiPBench Tier-3 validation panel for selected
+# bp_fe finalists. This stops after FastRoute/GRT and is intended for
+# routing-aware feedback. It does not produce final detailed-route PPA.
+
+seeds = [1000]
+iterations = 50
+gpu = 1
+timeout_seconds = 3600
+log_interval = 10
+timing_mode = "none"
+
+[[designs]]
+name = "bp_fe"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/bp_fe/bp_fe.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/bp_fe_top/config.mk"
+reference_def = "${HOME}/ChiPBench/bp_fe_placed.def"
+mode = "grt_only"
+timing_mode = "none"
+global_route_args = "-allow_congestion -verbose -congestion_iterations 5"

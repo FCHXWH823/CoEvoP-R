@@ -1,0 +1,68 @@
+# Tier-2-only OpenEvolve run against native DREAMPlace default.
+#
+# This run intentionally differs from the previous residual search:
+# - primary_baseline = "default" compares directly to native DREAMPlace;
+# - objective_mode = "native_residual" requires term("native_objective");
+# - fixed wirelength/density coefficient tuning is rejected;
+# - generated candidates must add a nonzero routing-aware correction.
+
+provider = "openai"
+term_scope = "dreamplace_replacement"
+objective_mode = "native_residual"
+mutation_mode = "diff"
+max_iterations = 12
+population_size = 80
+archive_size = 20
+num_islands = 5
+checkpoint_interval = 4
+num_top_programs = 3
+num_diverse_programs = 2
+severe_regression_pct = 10.0
+seed = 77
+evaluate_initial_presets = true
+primary_baseline = "default"
+hpwl_gate_search_pct = 0.0
+hpwl_gate_elite_pct = 0.0
+per_design_hpwl_gate_search_pct = 0.0
+per_design_overflow_gate_search_pct = 0.0
+min_design_both_improvement_fraction = 0.67
+overflow_severe_regression_pct = 10.0
+require_nonzero_routing_term = true
+min_abs_routing_coeff = 0.000000001
+route_coeff_cap = 0.03
+route_coeff_grid = [-0.03, -0.01, -0.003, -0.001, 0.001, 0.003, 0.01, 0.03]
+density_coeff_grid = [1.0]
+wirelength_coeff_grid = [1.0]
+max_calibrated_siblings = 0
+max_generation_attempts = 4
+parent_policy = "hpwl_safe_only"
+structured_feedback = true
+router_background = "../../prompts/router_objective_background.md"
+
+initial_presets = [
+  "dreamplace_native_default",
+  "dreamplace_native_soft_rudy_mean",
+  "dreamplace_native_soft_rudy_pnorm",
+  "dreamplace_explicit_wl_density",
+  "dreamplace_density_135",
+]
+
+[search]
+panel = "../shared_panels/chipbench_search_tier2_multidesign.toml"
+baseline_presets = [
+  "dreamplace_native_default",
+  "dreamplace_native_soft_rudy_mean",
+  "dreamplace_native_soft_rudy_pnorm",
+  "dreamplace_density_135",
+]
+
+[final]
+enabled = false
+
+[tier3]
+enabled = false
+
+[feedback]
+# Optional local feedback file from a previous run. Keep disabled in committed
+# configs because runs/ is intentionally not versioned.
+prior_feedback = ""

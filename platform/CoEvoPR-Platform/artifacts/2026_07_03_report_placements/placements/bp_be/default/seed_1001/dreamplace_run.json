@@ -1,0 +1,37 @@
+{
+  "command": [
+    "python3",
+    "dreamplace/Placer.py",
+    "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/default/seed_1001/dreamplace_config.json"
+  ],
+  "config_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/default/seed_1001/dreamplace_config.json",
+  "log_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/default/seed_1001/dreamplace.log",
+  "metrics": {
+    "assertion": null,
+    "custom_objective": {
+      "calls": 0,
+      "component_history": [],
+      "component_summary": {},
+      "last_components": {},
+      "last_grad_norm": null,
+      "last_terms": {},
+      "last_total": null,
+      "last_weighted_density_raw": null,
+      "last_wirelength_raw": null,
+      "objective_id": null,
+      "output_scale": null,
+      "term_history": [],
+      "term_scales": {}
+    },
+    "last": {
+      "hpwl": 37113450.0,
+      "objective": 7134000.0,
+      "overflow": 0.8028134
+    },
+    "missing_input_file": null,
+    "timed_out": false
+  },
+  "returncode": 0,
+  "run_dir": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_be/openevolve_tier2/final_tier2/bp_be/default/seed_1001",
+  "run_name": "bp_be_default_seed_1001"
+}

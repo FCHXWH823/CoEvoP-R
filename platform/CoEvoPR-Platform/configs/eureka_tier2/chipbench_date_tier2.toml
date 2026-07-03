@@ -1,0 +1,35 @@
+# Eureka-style CoEvoP&R Tier-2 run.
+# No OpenROAD/Tier-3 routing is launched by this config.
+#
+# Recommended environment for DATE-grade run:
+#   export OPENAI_API_KEY=...
+#   export OPENAI_MODEL=<strongest available GPT-family model>
+
+provider = "openai"
+term_scope = "dreamplace_replacement"
+eureka_iterations = 5
+samples_per_iteration = 16
+candidates_per_iteration = 4
+temperature = 1.0
+severe_regression_pct = 10.0
+
+[search]
+panel = "../shared_panels/chipbench_search_tier2.toml"
+baseline_presets = [
+  "dreamplace_routing_aware_smoke",
+]
+
+[final]
+enabled = true
+panel = "../shared_panels/chipbench_date_tier2.toml"
+top_k = 8
+baseline_presets = [
+  "dreamplace_wl_density",
+  "dreamplace_density_heavy",
+  "dreamplace_routing_aware_smoke",
+]
+
+[feedback]
+# Optional local feedback file from a previous run. Keep disabled in committed
+# configs because runs/ is intentionally not versioned.
+prior_feedback = ""

@@ -1,0 +1,27 @@
+# Held-out DREAMPlace panel for cross-design generalization checks.
+#
+# Intended use:
+# - evolve objectives on a specific search design such as bp_fe,
+# - evaluate the selected generated objectives here after evolution,
+# - keep these metrics out of parent selection and prompt feedback.
+
+seeds = [1000]
+iterations = 20
+gpu = 1
+timeout_seconds = 1800
+log_interval = 10
+timing_mode = "none"
+
+[[designs]]
+name = "ethernet"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/ethernet/cfg_000.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/ethernet/config.mk"
+mode = "global"
+timing_mode = "none"
+
+[[designs]]
+name = "isa_npu"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/isa_npu/train_cfg_1446_mixed.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/isa_npu/config.mk"
+mode = "global"
+timing_mode = "none"

@@ -1,0 +1,20 @@
+# Fast OpenROAD/ChiPBench Tier-3 validation panel for selected finalists.
+# This is intended to produce completed or partial OpenROAD artifacts quickly.
+# It uses the same bp_fe design as the cheap Tier-2 smoke panel, but with a
+# shorter internal timeout so the CoEvoP&R runner can recover partial CTS/GRT
+# metrics and write comparison/report artifacts.
+
+seeds = [1000]
+iterations = 50
+gpu = 1
+timeout_seconds = 900
+log_interval = 10
+timing_mode = "none"
+
+[[designs]]
+name = "bp_fe"
+dreamplace_config = "${HOME}/DREAMPlace/install/benchmarks/chipbench/bp_fe/bp_fe.json"
+chipbench_config = "${HOME}/ChiPBench/flow/designs/nangate45/bp_fe_top/config.mk"
+reference_def = "${HOME}/ChiPBench/bp_fe_placed.def"
+mode = "global"
+timing_mode = "none"

@@ -1,0 +1,417 @@
+{
+  "command": [
+    "python3",
+    "dreamplace/Placer.py",
+    "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/obj_705dbe679dcdb0f7/seed_1002/dreamplace_config.json"
+  ],
+  "config_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/obj_705dbe679dcdb0f7/seed_1002/dreamplace_config.json",
+  "log_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/obj_705dbe679dcdb0f7/seed_1002/dreamplace.log",
+  "metrics": {
+    "assertion": null,
+    "custom_objective": {
+      "calls": 160,
+      "component_history": [],
+      "component_summary": {},
+      "last_components": {},
+      "last_grad_norm": 837403.6,
+      "last_terms": {
+        "density_electric": {
+          "normalized": 0.010178212076425552,
+          "raw": 47468888.0
+        },
+        "pin_count_weighted_wl": {
+          "normalized": 5.798080921173096,
+          "raw": 3702158.0
+        },
+        "pin_density_pnorm": {
+          "normalized": 1.948099970817566,
+          "raw": 11.93151569366455
+        },
+        "wirelength_wawl": {
+          "normalized": 5.352791786193848,
+          "raw": 2245504.5
+        }
+      },
+      "last_total": 25011690000.0,
+      "last_weighted_density_raw": 1.29689,
+      "last_wirelength_raw": 2245504.0,
+      "objective_id": "obj_705dbe679dcdb0f7",
+      "output_scale": 4663775000.0,
+      "term_history": [
+        {
+          "call": 1,
+          "terms": {
+            "density_electric": {
+              "normalized": 1.0,
+              "raw": 4663774720.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 1.0,
+              "raw": 638514.375
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.0,
+              "raw": 6.124693870544434
+            },
+            "wirelength_wawl": {
+              "normalized": 1.0,
+              "raw": 419501.5625
+            }
+          }
+        },
+        {
+          "call": 10,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.11551861464977264,
+              "raw": 538752768.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 9.23694133758545,
+              "raw": 5897920.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.5879504680633545,
+              "raw": 15.850404739379883
+            },
+            "wirelength_wawl": {
+              "normalized": 9.757591247558594,
+              "raw": 4093325.0
+            }
+          }
+        },
+        {
+          "call": 20,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.08492329716682434,
+              "raw": 396063104.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 9.99250602722168,
+              "raw": 6380359.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.063255786895752,
+              "raw": 12.636810302734375
+            },
+            "wirelength_wawl": {
+              "normalized": 9.706694602966309,
+              "raw": 4071973.5
+            }
+          }
+        },
+        {
+          "call": 30,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.052741676568984985,
+              "raw": 245975296.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 11.16042423248291,
+              "raw": 7126091.5
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.6017024517059326,
+              "raw": 15.934630393981934
+            },
+            "wirelength_wawl": {
+              "normalized": 10.409278869628906,
+              "raw": 4366709.0
+            }
+          }
+        },
+        {
+          "call": 40,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.03616618737578392,
+              "raw": 168670944.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 10.89792251586914,
+              "raw": 6958480.5
+            },
+            "pin_density_pnorm": {
+              "normalized": 3.0630416870117188,
+              "raw": 18.76019287109375
+            },
+            "wirelength_wawl": {
+              "normalized": 10.105268478393555,
+              "raw": 4239176.0
+            }
+          }
+        },
+        {
+          "call": 50,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.025630740448832512,
+              "raw": 119536000.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 10.007725715637207,
+              "raw": 6390077.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 5.04955530166626,
+              "raw": 30.92698097229004
+            },
+            "wirelength_wawl": {
+              "normalized": 9.295308113098145,
+              "raw": 3899396.25
+            }
+          }
+        },
+        {
+          "call": 60,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.01988215744495392,
+              "raw": 92725904.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 8.994898796081543,
+              "raw": 5743372.5
+            },
+            "pin_density_pnorm": {
+              "normalized": 5.084239959716797,
+              "raw": 31.13941192626953
+            },
+            "wirelength_wawl": {
+              "normalized": 8.39582633972168,
+              "raw": 3522062.5
+            }
+          }
+        },
+        {
+          "call": 70,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.01672138087451458,
+              "raw": 77984752.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 8.154489517211914,
+              "raw": 5206759.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 8.948786735534668,
+              "raw": 54.80857849121094
+            },
+            "wirelength_wawl": {
+              "normalized": 7.660613536834717,
+              "raw": 3213639.5
+            }
+          }
+        },
+        {
+          "call": 80,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.014519051648676395,
+              "raw": 67713584.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 7.633983135223389,
+              "raw": 4874408.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 4.395077705383301,
+              "raw": 26.91850471496582
+            },
+            "wirelength_wawl": {
+              "normalized": 7.184346675872803,
+              "raw": 3013844.75
+            }
+          }
+        },
+        {
+          "call": 90,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.013805241324007511,
+              "raw": 64384536.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 7.11841344833374,
+              "raw": 4545209.5
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.9850828647613525,
+              "raw": 18.282718658447266
+            },
+            "wirelength_wawl": {
+              "normalized": 6.679280757904053,
+              "raw": 2801968.75
+            }
+          }
+        },
+        {
+          "call": 100,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.0135947959497571,
+              "raw": 63403064.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 6.751262187957764,
+              "raw": 4310778.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.7433316707611084,
+              "raw": 16.802066802978516
+            },
+            "wirelength_wawl": {
+              "normalized": 6.31628942489624,
+              "raw": 2649693.25
+            }
+          }
+        },
+        {
+          "call": 110,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.01242576353251934,
+              "raw": 57950960.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 6.528120517730713,
+              "raw": 4168298.75
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.9286632537841797,
+              "raw": 17.937166213989258
+            },
+            "wirelength_wawl": {
+              "normalized": 6.079472064971924,
+              "raw": 2550348.0
+            }
+          }
+        },
+        {
+          "call": 120,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.011751728132367134,
+              "raw": 54807412.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 6.305713653564453,
+              "raw": 4026289.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 4.700510501861572,
+              "raw": 28.789188385009766
+            },
+            "wirelength_wawl": {
+              "normalized": 5.850790977478027,
+              "raw": 2454416.0
+            }
+          }
+        },
+        {
+          "call": 130,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.011182425543665886,
+              "raw": 52152312.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 6.149054050445557,
+              "raw": 3926259.5
+            },
+            "pin_density_pnorm": {
+              "normalized": 2.3448116779327393,
+              "raw": 14.36125373840332
+            },
+            "wirelength_wawl": {
+              "normalized": 5.68572473526001,
+              "raw": 2385170.5
+            }
+          }
+        },
+        {
+          "call": 140,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.010750558227300644,
+              "raw": 50138180.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 6.0099101066589355,
+              "raw": 3837414.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.5535340309143066,
+              "raw": 9.514920234680176
+            },
+            "wirelength_wawl": {
+              "normalized": 5.544483184814453,
+              "raw": 2325919.5
+            }
+          }
+        },
+        {
+          "call": 150,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.010246033780276775,
+              "raw": 47785192.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 5.9616827964782715,
+              "raw": 3806620.25
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.6601271629333496,
+              "raw": 10.167770385742188
+            },
+            "wirelength_wawl": {
+              "normalized": 5.500503063201904,
+              "raw": 2307469.75
+            }
+          }
+        },
+        {
+          "call": 160,
+          "terms": {
+            "density_electric": {
+              "normalized": 0.010178212076425552,
+              "raw": 47468888.0
+            },
+            "pin_count_weighted_wl": {
+              "normalized": 5.798080921173096,
+              "raw": 3702158.0
+            },
+            "pin_density_pnorm": {
+              "normalized": 1.948099970817566,
+              "raw": 11.93151569366455
+            },
+            "wirelength_wawl": {
+              "normalized": 5.352791786193848,
+              "raw": 2245504.5
+            }
+          }
+        }
+      ],
+      "term_scales": {
+        "density_electric": 4663775000.0,
+        "pin_count_weighted_wl": 638514.4,
+        "pin_density_pnorm": 6.124694,
+        "wirelength_wawl": 419501.6
+      }
+    },
+    "last": {
+      "hpwl": 4293720.0,
+      "objective": 25136720000.0,
+      "overflow": 0.6306465
+    },
+    "missing_input_file": null,
+    "timed_out": false
+  },
+  "returncode": 0,
+  "run_dir": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/ethernet_paperscale_gpt41mini_schema_v2_20260702/ethernet/openevolve_tier2/final_tier2/ethernet/obj_705dbe679dcdb0f7/seed_1002",
+  "run_name": "ethernet_obj_705dbe679dcdb0f7_seed_1002"
+}

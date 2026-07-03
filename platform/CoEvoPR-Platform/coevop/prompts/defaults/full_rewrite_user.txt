@@ -1,0 +1,35 @@
+# Current Program Information
+- Fitness: {fitness_score}
+- Feature coordinates: {feature_coords}
+- Focus areas: {improvement_areas}
+
+# Task Environment
+{task_environment}
+
+{artifacts}
+
+# Program Evolution History
+{evolution_history}
+
+# Current Program
+```{language}
+{current_program}
+```
+
+# Task
+Rewrite the objective program to improve FITNESS SCORE.
+The evaluator rewards end-to-end placement behavior, including routing/congestion, timing proxies when available, runtime, stability, and wirelength-related placement quality.
+Different objective mechanisms with similar fitness but different feature coordinates are useful.
+
+Maintain the same input/output API:
+
+```python
+def objective(features):
+    ...
+    return score, {{"component_name": component_expression}}
+```
+
+Return the complete rewritten objective_program in the JSON response.
+Do not merely copy the current program.
+Do not add an effectively-zero no-op term.
+Prefer a physically meaningful routing/timing/placement mechanism that the evaluator can test.

@@ -1,0 +1,17 @@
+# Public template. Set DREAMPLACE_ROOT before use, or copy this file to
+# *.local.toml and replace paths with machine-specific values.
+# Phase-1 timing-proxy support is verified for bp_fe first. Other ChiPBench
+# designs require timing collateral verification before enabling gate mode.
+ot_shell = "${DREAMPLACE_ROOT}/bin/ot-shell"
+timeout_seconds = 600
+iterations = 1
+threads = 8
+gpu = 1
+
+[[designs]]
+name = "bp_fe"
+base_config = "../dreamplace_base/bp_fe_timing_opentimer_macroplaced.json"
+lib = "${DREAMPLACE_ROOT}/benchmarks/chipbench/bp_fe/timing/bp_fe_merged.lib"
+sdc = "${DREAMPLACE_ROOT}/benchmarks/chipbench/bp_fe/timing/bp_fe_ot.sdc"
+verilog = "${DREAMPLACE_ROOT}/benchmarks/chipbench/bp_fe/timing/bp_fe_ot.v"
+rc_estimate = "flute_elmore_per_micron"

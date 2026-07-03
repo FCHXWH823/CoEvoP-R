@@ -1,0 +1,48 @@
+{
+  "coevop_commit": "64e84dd66993c5fb66b2ddfb938551eba1b011b5",
+  "component_summary_json": "{}",
+  "config_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/default/seed_1002/dreamplace_config.json",
+  "custom_grad_norm": null,
+  "custom_objective_calls": 0,
+  "custom_total": null,
+  "design": "bp_fe",
+  "dreamplace_commit": "644c547e75819ee05640c3f88114f66f9b0f88da",
+  "failure_stage": null,
+  "hpwl": 13912950.0,
+  "log_path": "/home/ruogcheng2/CoEvoPR-Platform/runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/default/seed_1002/dreamplace.log",
+  "metrics": {
+    "assertion": null,
+    "custom_objective": {
+      "calls": 0,
+      "component_history": [],
+      "component_summary": {},
+      "last_components": {},
+      "last_grad_norm": null,
+      "last_terms": {},
+      "last_total": null,
+      "last_weighted_density_raw": null,
+      "last_wirelength_raw": null,
+      "objective_id": null,
+      "output_scale": null,
+      "term_history": [],
+      "term_scales": {}
+    },
+    "last": {
+      "hpwl": 13912950.0,
+      "objective": 4796158.0,
+      "overflow": 0.8285241
+    },
+    "missing_input_file": null,
+    "timed_out": false
+  },
+  "objective_id": "default",
+  "output_artifact": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/default/seed_1002/results/macro_placed/macro_placed.gp.def",
+  "overflow": 0.8285241,
+  "returncode": 0,
+  "run_dir": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/bp_fe/default/seed_1002",
+  "runtime_seconds": 10.600868701934814,
+  "seed": 1002,
+  "status": "success",
+  "tns": null,
+  "wns": null
+}

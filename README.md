@@ -73,6 +73,20 @@ See the [`ideas/`](./ideas/) folder for each collaborator's written proposals an
 
 ---
 
+## Platform Implementation
+
+The current implementation is packaged under
+[`platform/CoEvoPR-Platform/`](./platform/CoEvoPR-Platform/). It contains the
+source code for the LLM objective-evolution platform, including the restricted
+objective DSL, OpenEvolve-style memory loop, DREAMPlace integration patches,
+OpenROAD/ChiPBench evaluators, OpenTimer proxy support, configs, tests, and
+setup documentation.
+
+Generated run artifacts, datasets, API keys, DREAMPlace, OpenROAD, and
+ChiPBench are not vendored into this repository.
+
+---
+
 ## Repository Structure
 
 ```

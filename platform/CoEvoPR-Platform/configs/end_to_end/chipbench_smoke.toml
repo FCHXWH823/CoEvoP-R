@@ -1,0 +1,41 @@
+# One-round Path-C smoke configuration.
+# Run from WSL after syncing the repo and setting CIRCUITNET_ROOT if needed:
+#   python3 -m coevop.cli evolve-end-to-end \
+#     --config configs/end_to_end/chipbench_smoke.toml \
+#     --run-dir runs/e2e/chipbench_smoke_v1 \
+#     --resume
+
+manifest = "../../data_manifests/circuitnet_n14_real.local.json"
+provider = "mock"
+rounds = 1
+
+[tier1]
+population_size = 10
+generations = 1
+elite_count = 5
+max_attempts_per_candidate = 3
+seed = 0
+split_strategy = "auto"
+selection_split = "validation"
+reflection_mode = "accepted"
+operator_weights = "crossover=0.35,mutate=0.30,param_tune=0.20,simplify=0.15"
+islands = 5
+enable_constant_fit = true
+
+[promotion]
+top_k_tier2 = 5
+
+[tier2]
+panel = "../shared_panels/chipbench_smoke.toml"
+baseline_presets = [
+  "dreamplace_wl_density",
+  "dreamplace_density_heavy",
+  "dreamplace_routing_aware_smoke",
+]
+
+[tier3]
+enabled = false
+top_k = 5
+
+[feedback]
+severe_regression_pct = 10.0

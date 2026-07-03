@@ -1,0 +1,94 @@
+[
+  {
+    "objective_id": "default",
+    "objective_path": null,
+    "source": "native_dreamplace",
+    "spec_id": null,
+    "term_set": []
+  },
+  {
+    "objective_id": "custom_default",
+    "objective_path": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_tier2/objectives/custom_default.json",
+    "source": "native_identity_preset",
+    "spec_id": "obj_e4d589cf838f09f0",
+    "term_set": [
+      "native_objective"
+    ]
+  },
+  {
+    "objective_id": "obj_89ab84fa50928afa",
+    "objective_path": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_baselines/dreamplace_explicit_wl_density.json",
+    "source": "file",
+    "spec_id": "obj_89ab84fa50928afa",
+    "term_set": [
+      "density",
+      "wirelength"
+    ]
+  },
+  {
+    "objective_id": "obj_778e7476bcb862b5",
+    "objective_path": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_baselines/dreamplace_wawl_electric.json",
+    "source": "file",
+    "spec_id": "obj_778e7476bcb862b5",
+    "term_set": [
+      "density_electric",
+      "wirelength_wawl"
+    ]
+  },
+  {
+    "objective_id": "obj_217df9cfe91e6c1f",
+    "objective_path": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_baselines/dreamplace_wawl_density_bell.json",
+    "source": "file",
+    "spec_id": "obj_217df9cfe91e6c1f",
+    "term_set": [
+      "density_bell",
+      "wirelength_wawl"
+    ]
+  },
+  {
+    "objective_id": "obj_07b5b4d8c6226a44",
+    "objective_path": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_baselines/dreamplace_lse_density_bell.json",
+    "source": "file",
+    "spec_id": "obj_07b5b4d8c6226a44",
+    "term_set": [
+      "density_bell",
+      "wirelength_lse"
+    ]
+  },
+  {
+    "objective_id": "obj_cb3a8aa49480a27b",
+    "objective_path": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_baselines/dreamplace_routing_aware_smoke.json",
+    "source": "file",
+    "spec_id": "obj_cb3a8aa49480a27b",
+    "term_set": [
+      "density_electric",
+      "route_pressure_long",
+      "soft_rudy_pnorm",
+      "wirelength_wawl"
+    ]
+  },
+  {
+    "objective_id": "obj_ab56d60363230184",
+    "objective_path": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_candidates/iter_0004_obj_ab56d60363230184_calib_route_3e-08_density_1.0_wirelength_1.0.json",
+    "source": "file",
+    "spec_id": "obj_ab56d60363230184",
+    "term_set": [
+      "density",
+      "pin_density_pnorm",
+      "soft_rudy_pnorm",
+      "wirelength"
+    ]
+  },
+  {
+    "objective_id": "obj_34cad18eb2fc5f98",
+    "objective_path": "runs/chipbench_generalization/postgrt_gpt41mini_fallback_after_opentimer_block_v1/bp_fe/openevolve_tier2/final_candidates/iter_0004_obj_34cad18eb2fc5f98_calib_route_-3e-07_density_1.0_wirelength_1.0.json",
+    "source": "file",
+    "spec_id": "obj_34cad18eb2fc5f98",
+    "term_set": [
+      "density",
+      "pin_density_pnorm",
+      "soft_rudy_pnorm",
+      "wirelength"
+    ]
+  }
+]

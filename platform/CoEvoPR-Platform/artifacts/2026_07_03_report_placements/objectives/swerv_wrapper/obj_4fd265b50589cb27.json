@@ -1,0 +1,60 @@
+{
+  "ast": {
+    "args": [
+      {
+        "name": "wirelength_wawl",
+        "op": "term"
+      },
+      {
+        "name": "density_electric",
+        "op": "term"
+      },
+      {
+        "args": [
+          {
+            "op": "const",
+            "value": 3e-08
+          },
+          {
+            "args": [
+              {
+                "args": [
+                  {
+                    "name": "soft_rudy_pnorm",
+                    "op": "term"
+                  },
+                  {
+                    "name": "route_pressure_long",
+                    "op": "term"
+                  }
+                ],
+                "op": "add"
+              }
+            ],
+            "op": "softplus"
+          }
+        ],
+        "op": "mul"
+      }
+    ],
+    "op": "add"
+  },
+  "complexity": 9,
+  "components": null,
+  "constants": {
+    "c0": 3e-08
+  },
+  "created_by": "openai:calibration",
+  "id": "obj_4fd265b50589cb27",
+  "parent_ids": [
+    "obj_08781945cde8d0e9"
+  ],
+  "rationale": "Introduce a smooth bounded routing pressure term using softplus of the sum of soft_rudy_pnorm and route_pressure_long to gently penalize congestion hotspots while preserving differentiability. This mechanism explicitly integrates routing pressure beyond the baseline wirelength and density terms, addressing routing-related objectives missing in the current baseline. Use a small coefficient (0.05) to avoid aggressive spreading and instability. Returning all components for analysis and interpretability. This is a routing-aware mechanism distinct from prior negative attempts involving multiplicative or sigmoid interaction, using a different smooth transform. Calibrated coefficients for Tier-2 search: route=3e-08, density=None, wirelength=None.",
+  "source_program": null,
+  "term_set": [
+    "density_electric",
+    "route_pressure_long",
+    "soft_rudy_pnorm",
+    "wirelength_wawl"
+  ]
+}

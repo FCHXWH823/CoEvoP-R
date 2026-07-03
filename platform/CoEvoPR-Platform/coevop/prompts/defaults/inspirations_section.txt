@@ -1,0 +1,5 @@
+## Inspiration Programs
+
+These programs represent diverse approaches and failure modes that may inspire a different mechanism:
+
+{inspiration_programs}

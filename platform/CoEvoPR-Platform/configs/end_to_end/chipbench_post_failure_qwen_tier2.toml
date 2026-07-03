@@ -1,0 +1,46 @@
+# Qwen fallback for the post-failure real-scale Tier-1 -> Tier-2 run.
+# Use this when OpenAI quota is unavailable.
+#
+# Required WSL environment:
+#   export QWEN_API_KEY=...
+#   export QWEN_MODEL=qwen-max
+#   export CIRCUITNET_ROOT=$HOME/datasets/CircuitNet/CircuitNet-N14
+
+manifest = "../../data_manifests/circuitnet_n14_real.local.json"
+provider = "qwen"
+rounds = 1
+
+[tier1]
+population_size = 8
+generations = 1
+elite_count = 5
+max_attempts_per_candidate = 6
+seed = 78
+split_strategy = "auto"
+selection_split = "validation"
+reflection_mode = "accepted"
+operator_weights = "crossover=0.35,mutate=0.30,param_tune=0.20,simplify=0.15"
+islands = 5
+enable_constant_fit = true
+
+[promotion]
+top_k_tier2 = 2
+min_terms_tier2 = 2
+
+[tier2]
+panel = "../shared_panels/chipbench_smoke.toml"
+baseline_presets = [
+  "dreamplace_wl_density",
+  "dreamplace_density_heavy",
+  "dreamplace_routing_aware_smoke",
+]
+
+[tier3]
+enabled = false
+top_k = 1
+
+[feedback]
+severe_regression_pct = 10.0
+# Optional local feedback file from a previous run. Keep disabled in committed
+# configs because runs/ is intentionally not versioned.
+prior_feedback = ""
