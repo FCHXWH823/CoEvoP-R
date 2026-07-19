@@ -1,0 +1,14 @@
+diff --git a/dreamplace/PlaceDB.py b/dreamplace/PlaceDB.py
+--- a/dreamplace/PlaceDB.py
++++ b/dreamplace/PlaceDB.py
+@@ -11,6 +11,10 @@ import math
+ import time
+ import numpy as np
+ import torch
++
++if not hasattr(np, "string_"):
++    np.string_ = np.bytes_
++
+ import logging
+ import Params
+ import dreamplace

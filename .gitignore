@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+/build/
+/dist/
+*.whl
+*.tar.gz
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local datasets and large artifacts
+/data/
+/datasets/
+data_manifests/*.local.*
+/runs/
+/artifacts/
+/anonymous_release/
+/private_evidence/
+*.db
+*.sqlite
+*.duckdb
+
+# Local machine configs and credentials
+*.local.toml
+*.local.json
+*.local.yaml
+*.local.yml
+*.local.sh
+*.local.cmd
+.env
+.env.*
+API keys/
+api_keys/
+secrets/
+
+# External tool checkouts/builds at repo root
+/DREAMPlace/
+/ChiPBench/
+/OpenROAD/
+
+# Logs and generated reports
+logs/
+reports/
+*.log
+*.pid
+*_pid.txt
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

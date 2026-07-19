@@ -1,0 +1,51 @@
+# Mock-provider smoke for the trajectory-aware objective interface.
+
+provider = "mock"
+term_scope = "dreamplace_controller"
+objective_mode = "controller"
+mutation_mode = "diff"
+allow_short_search_for_tests = true
+max_iterations = 2
+samples_per_iteration = 1
+population_size = 20
+archive_size = 5
+num_islands = 2
+map_elites_enabled = true
+feature_bins = 4
+migration_interval = 10
+migration_rate = 0.1
+migration_topology = "ring"
+checkpoint_interval = 10
+num_top_programs = 2
+num_diverse_programs = 1
+seed = 7
+evaluate_initial_presets = true
+primary_baseline = "default"
+parent_policy = "pareto_multiobjective"
+selection_policy = "pareto_multiobjective"
+structured_feedback = true
+min_state_registers = 1
+require_nonzero_routing_term = false
+max_calibrated_siblings = 0
+initial_presets = [
+  "dreamplace_controller_native_identity",
+  "dreamplace_controller_eplace_smooth",
+]
+
+[timing_controller]
+min_net_coverage = 0.95
+
+[search]
+panel = "../shared_panels/chipbench_controller_identity_smoke.toml"
+disable_legalization = true
+baseline_presets = [
+  "dreamplace_controller_native_identity",
+  "dreamplace_controller_eplace_smooth",
+]
+
+[final]
+enabled = false
+disable_legalization = false
+
+[tier3]
+enabled = false

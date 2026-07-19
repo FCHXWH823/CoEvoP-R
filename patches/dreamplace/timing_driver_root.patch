@@ -1,0 +1,68 @@
+diff --git a/dreamplace/ops/timing/src/timing_cpp.cpp b/dreamplace/ops/timing/src/timing_cpp.cpp
+--- a/dreamplace/ops/timing/src/timing_cpp.cpp
++++ b/dreamplace/ops/timing/src/timing_cpp.cpp
+@@ -297,22 +297,35 @@ int timingCppLauncher(
+     }
+     auto& net = net_iter->second;
+     const int degree = netpin_start[i + 1] - netpin_start[i];
+-    const int root = flat_netpin[netpin_start[i]];
+
+     // Validate all real pins before mutating the RC tree. If any pin cannot
+     // be resolved in the timer, skip this net as incomplete timing collateral.
+     bool coevop_missing_pin = false;
++    std::vector<std::string> coevop_resolved_pin_names(degree);
+     for (int j = 0; j < degree; ++j) {
+       int pin = flat_netpin[j + netpin_start[i]];
+-      std::string resolved_pin_name = coevopResolvePinName(
++      coevop_resolved_pin_names[j] = coevopResolvePinName(
+           coevop_pin_alias, pin_names, node_names, pin2node, pin);
+-      if (resolved_pin_name.empty() ||
+-          timer.pins().find(resolved_pin_name) == timer.pins().end()) {
++      if (coevop_resolved_pin_names[j].empty() ||
++          timer.pins().find(coevop_resolved_pin_names[j]) == timer.pins().end()) {
+         coevop_missing_pin = true;
+         break;
+       }
+     }
+-    if (coevop_missing_pin) {
++    // OpenTimer requires the RC-tree root to be the electrical driver. DEF
++    // pin order is not a driver-order contract, especially after exporting a
++    // flattened netlist from OpenDB, so resolve the root from OpenTimer.
++    auto* coevop_timer_root = net.root();
++    int root = -1;
++    if (coevop_timer_root != nullptr) {
++      for (int j = 0; j < degree; ++j) {
++        if (coevop_resolved_pin_names[j] == coevop_timer_root->name()) {
++          root = flat_netpin[j + netpin_start[i]];
++          break;
++        }
++      }
++    }
++    if (coevop_missing_pin || root < 0) {
+       ++coevop_skipped_pins;
+       continue;
+     }
+@@ -324,9 +337,7 @@ int timingCppLauncher(
+       if (index < degree) {
+         int pin = flat_netpin[index + netpin_start[i]];
+         name = pin_names[pin];
+-        std::string resolved_pin_name = coevopResolvePinName(
+-            coevop_pin_alias, pin_names, node_names, pin2node, pin);
+-        if (!resolved_pin_name.empty()) name = resolved_pin_name;
++        name = coevop_resolved_pin_names[index];
+         if (!tree.node(name)) tree.insert_node(name, 0);
+         // Set the inner pin pointer of this rc node.
+         auto pin_iter = timer.pins().find(name);
+@@ -472,11 +483,5 @@ int timingCppLauncher(
+       emplace_rc_node(global2inner_map[root]);
+     }
+     // Assign root node to this RC tree.
+-    std::string resolved_root_name = coevopResolvePinName(
+-        coevop_pin_alias, pin_names, node_names, pin2node, root);
+-    if (resolved_root_name.empty()) {
+-      ++coevop_skipped_pins;
+-      continue;
+-    }
+-    tree.assign_root(resolved_root_name);
++    tree.assign_root(coevop_timer_root->name());
+     tree.update_rc_timing();

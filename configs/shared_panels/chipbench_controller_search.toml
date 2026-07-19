@@ -1,0 +1,48 @@
+# Placement panel used to evaluate objective proposals during evolution.
+seeds = [1000]
+iterations = 1000
+gpu = 1
+timeout_seconds = 7200
+log_interval = 10
+timing_mode = "none"
+stop_overflow = 0.0
+
+[[designs]]
+name = "bp_fe"
+dreamplace_config = "../dreamplace_base/chipbench_movable/bp_fe.json"
+timing_mode = "none"
+
+[[designs]]
+name = "bp_be"
+dreamplace_config = "../dreamplace_base/chipbench_movable/bp_be.json"
+timing_mode = "none"
+
+[[designs]]
+name = "swerv_wrapper"
+dreamplace_config = "../dreamplace_base/chipbench_movable/swerv_wrapper.json"
+timing_mode = "none"
+
+[[designs]]
+name = "ethernet"
+dreamplace_config = "../dreamplace_base/chipbench_movable/ethernet.json"
+timing_mode = "none"
+
+[[designs]]
+name = "dft68"
+dreamplace_config = "../dreamplace_base/chipbench_movable/dft68.json"
+timing_mode = "none"
+
+[[designs]]
+name = "or1200"
+dreamplace_config = "../dreamplace_base/chipbench_movable/or1200.json"
+timing_mode = "none"
+
+[[designs]]
+name = "vga_lcd"
+dreamplace_config = "../dreamplace_base/chipbench_movable/vga_lcd.json"
+timing_mode = "none"
+
+[[designs]]
+name = "mor1kx"
+dreamplace_config = "../dreamplace_base/chipbench_movable/mor1kx.json"
+timing_mode = "none"

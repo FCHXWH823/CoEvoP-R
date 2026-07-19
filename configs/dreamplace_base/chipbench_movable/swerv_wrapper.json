@@ -1,0 +1,96 @@
+{
+  "abacus_legalize_flag": 0,
+  "coevop_chipbench_generation_audit": {
+    "design_name": "swerv_wrapper",
+    "flow_variant": "coevop_table1_movable_v1",
+    "input_stage": "pre_macro",
+    "note": "Generated for CoEvoP&R Table 1 bootstrapping. Validate with native DREAMPlace and custom_default before objective evolution.",
+    "source": "ChiPBench/OpenROAD-flow-scripts Nangate45 output",
+    "source_def": null,
+    "source_odb": "${CHIPBENCH_ROOT}/flow/results/nangate45/swerv_wrapper/coevop_table1_movable_v1/2_1_floorplan.odb",
+    "variables": {
+      "ADDITIONAL_LEFS": "$(PLATFORM_DIR)/lef/fakeram45_2048x39.lef                           $(PLATFORM_DIR)/lef/fakeram45_256x34.lef                           $(PLATFORM_DIR)/lef/fakeram45_64x21.lef",
+      "ADDITIONAL_LIBS": "$(PLATFORM_DIR)/lib/fakeram45_2048x39.lib                           $(PLATFORM_DIR)/lib/fakeram45_256x34.lib                           $(PLATFORM_DIR)/lib/fakeram45_64x21.lib",
+      "CORE_AREA": "10.07 11.2 1090 990",
+      "DESIGN_NAME": "swerv_wrapper",
+      "DETAILED_ROUTE_ARGS": "-droute_end_iter 4",
+      "DIE_AREA": "0 0 1100 1000",
+      "FASTROUTE_TCL": "$(DESIGN_HOME)/$(PLATFORM)/$(DESIGN_NAME)/fastroute.tcl",
+      "GLOBAL_ROUTE_ARGS": "-allow_congestion -verbose -congestion_iterations 10",
+      "MACRO_PLACE_CHANNEL": "20 20",
+      "MACRO_PLACE_HALO": "10 10",
+      "PLACE_DENSITY_LB_ADDON": "0.10",
+      "PLACE_PINS_ARGS": "-exclude left:* -exclude right:* -exclude top:* -exclude bottom:0-200 -exclude bottom:1000-1100",
+      "PLATFORM": "nangate45",
+      "RTLMP_MAX_INST": "30000",
+      "RTLMP_MAX_MACRO": "12",
+      "RTLMP_MIN_INST": "5000",
+      "RTLMP_MIN_MACRO": "4",
+      "SDC_FILE": "$(DESIGN_HOME)/$(PLATFORM)/swerv_wrapper/constraint.sdc",
+      "SYNTH_HIERARCHICAL": "1",
+      "TNS_END_PERCENT": "100",
+      "VERILOG_FILES": "$(DESIGN_HOME)/src/swerv/swerv_wrapper.sv2v.v                         $(DESIGN_HOME)/$(PLATFORM)/swerv/macros.v"
+    }
+  },
+  "coevop_macro_preflight": {
+    "config_path": "${COEVOP_ROOT}/configs/dreamplace_base/chipbench_movable/swerv_wrapper.json",
+    "def_path": "${DREAMPLACE_ROOT}/benchmarks/chipbench/swerv_wrapper/def/floorplan_unplaced.def",
+    "def_sha256": "805ae24a5032c6ea0694a011cb0828a614541383b5000e3edb42232d767ca74f",
+    "failures": [],
+    "fixed_macro_count": 0,
+    "hard_macro_count": 28,
+    "hard_macro_master_count": 3,
+    "lef_paths": [
+      "${DREAMPLACE_ROOT}/benchmarks/chipbench/swerv_wrapper/lef/tech.lef",
+      "${DREAMPLACE_ROOT}/benchmarks/chipbench/swerv_wrapper/lef/cells.lef",
+      "${DREAMPLACE_ROOT}/benchmarks/chipbench/swerv_wrapper/lef/fakeram45_2048x39.lef",
+      "${DREAMPLACE_ROOT}/benchmarks/chipbench/swerv_wrapper/lef/fakeram45_256x34.lef",
+      "${DREAMPLACE_ROOT}/benchmarks/chipbench/swerv_wrapper/lef/fakeram45_64x21.lef"
+    ],
+    "macro_place_flag": 1,
+    "minimum_movable_macro_count": 1,
+    "missing_inputs": [],
+    "movable_macro_count": 28,
+    "ok": true,
+    "reject_fixed_hard_macros": true,
+    "require_movable_macros": true,
+    "status_counts": {
+      "UNPLACED": 28
+    }
+  },
+  "def_input": "benchmarks/chipbench/swerv_wrapper/def/floorplan_unplaced.def",
+  "density_weight": 8e-05,
+  "detailed_place_flag": 1,
+  "deterministic_flag": 1,
+  "gamma": 8.0,
+  "global_place_flag": 1,
+  "global_place_stages": [
+    {
+      "iteration": 1000,
+      "learning_rate": 0.01,
+      "num_bins_x": 512,
+      "num_bins_y": 512,
+      "optimizer": "nesterov",
+      "wirelength": "weighted_average"
+    }
+  ],
+  "gpu": 1,
+  "lef_input": [
+    "benchmarks/chipbench/swerv_wrapper/lef/tech.lef",
+    "benchmarks/chipbench/swerv_wrapper/lef/cells.lef",
+    "benchmarks/chipbench/swerv_wrapper/lef/fakeram45_2048x39.lef",
+    "benchmarks/chipbench/swerv_wrapper/lef/fakeram45_256x34.lef",
+    "benchmarks/chipbench/swerv_wrapper/lef/fakeram45_64x21.lef"
+  ],
+  "legalize_flag": 1,
+  "macro_halo_x": 10.0,
+  "macro_halo_y": 10.0,
+  "macro_place_flag": 1,
+  "num_bins_x": 512,
+  "num_bins_y": 512,
+  "random_seed": 1000,
+  "result_dir": "results/chipbench_swerv_wrapper_table1",
+  "routability_opt_flag": 0,
+  "target_density": 0.7,
+  "timing_opt_flag": 0
+}

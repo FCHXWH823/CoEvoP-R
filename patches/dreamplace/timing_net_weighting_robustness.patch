@@ -1,0 +1,58 @@
+diff --git a/dreamplace/ops/timing/src/net_weighting_scheme.h b/dreamplace/ops/timing/src/net_weighting_scheme.h
+--- a/dreamplace/ops/timing/src/net_weighting_scheme.h
++++ b/dreamplace/ops/timing/src/net_weighting_scheme.h
+@@ -131,7 +131,10 @@ struct NetWeighting<T, NetWeightingScheme::ADAMS> {
+     for (auto& path : paths) {
+       for (auto& point : path) {
+-        auto name = point.pin.net()->name();
+-        int net_id = net_name2id_map.at(name);
++        auto* net = point.pin.net();
++        if (!net) continue;
++        auto net_iter = net_name2id_map.find(net->name());
++        if (net_iter == net_name2id_map.end()) continue;
++        int net_id = net_iter->second;
+         net_critical_flag.at(net_id) = 1;
+       }
+     }
+@@ -161,11 +164,29 @@ struct NetWeighting<T, NetWeightingScheme::LILITH> {
+
+     // Calculate run-time of net-weighting update.
+     auto beg = std::chrono::steady_clock::now();
+-    float wns = timer.report_wns().value();
++    // DREAMPlace reports and optimizes late/max timing.  Some OpenTimer
++    // collateral has no early/min endpoint data, making report_wns() empty
++    // even though late WNS is valid.  Avoid std::bad_optional_access and use
++    // the same split as NonLinearPlace's WNS/TNS reporting path.
++    auto wns_opt = timer.report_wns(ot::MAX);
++    if (!wns_opt) {
++      dreamplacePrint(kWARN,
++        "OpenTimer late WNS is unavailable; skipping net-weight update\n");
++      return;
++    }
++    float wns = *wns_opt;
+     double max_nw = 0;
++    size_t matched_nets = 0;
++    size_t skipped_nets = 0;
+     for (const auto& [name, net] : timer.nets()) {
+       // The net id in the dreamplace database.
+-      int net_id = net_name2id_map.at(name);
++      auto net_iter = net_name2id_map.find(name);
++      if (net_iter == net_name2id_map.end()) {
++        ++skipped_nets;
++        continue;
++      }
++      int net_id = net_iter->second;
++      ++matched_nets;
+       float slack = report_net_slack(timer, net);
+       if (wns < 0) {
+         float nc = (slack < 0)? std::max(0.f, slack / wns) : 0;
+@@ -185,6 +206,9 @@ struct NetWeighting<T, NetWeightingScheme::LILITH> {
+       if (max_nw < net_weights[net_id]) max_nw = net_weights[net_id];
+     }
++    dreamplacePrint(kINFO,
++      "OpenTimer net-weight update matched %zu nets and skipped %zu unmapped nets\n",
++      matched_nets, skipped_nets);
+     auto end = std::chrono::steady_clock::now();
+     dreamplacePrint(kINFO, "finish net-weighting (%f s)\n",
+       std::chrono::duration_cast<std::chrono::milliseconds>(
+         end - beg).count() * 0.001);

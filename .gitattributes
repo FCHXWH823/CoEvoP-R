@@ -1,0 +1,16 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.db binary
+*.sqlite binary
+*.duckdb binary
+
+# Unified diffs may need whitespace-only context to apply exactly upstream.
+*.patch whitespace=-blank-at-eol

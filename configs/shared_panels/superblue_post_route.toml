@@ -1,0 +1,55 @@
+# Post-route panel for the ICCAD 2015 Superblue evaluation set.
+seeds = [1000, 1001, 1002]
+iterations = 1000
+gpu = 1
+timeout_seconds = 21600
+log_interval = 25
+timing_mode = "none"
+
+[[designs]]
+name = "superblue1_ot_notiming"
+dreamplace_config = "../dreamplace_base/iccad2015_notiming/superblue1_ot_notiming.json"
+chipbench_config = "${SUPERBLUE_OPENROAD_CONFIG_ROOT}/superblue1/config.mk"
+mode = "global"
+
+[[designs]]
+name = "superblue3_ot_notiming"
+dreamplace_config = "../dreamplace_base/iccad2015_notiming/superblue3_ot_notiming.json"
+chipbench_config = "${SUPERBLUE_OPENROAD_CONFIG_ROOT}/superblue3/config.mk"
+mode = "global"
+
+[[designs]]
+name = "superblue4_ot_notiming"
+dreamplace_config = "../dreamplace_base/iccad2015_notiming/superblue4_ot_notiming.json"
+chipbench_config = "${SUPERBLUE_OPENROAD_CONFIG_ROOT}/superblue4/config.mk"
+mode = "global"
+
+[[designs]]
+name = "superblue5_ot_notiming"
+dreamplace_config = "../dreamplace_base/iccad2015_notiming/superblue5_ot_notiming.json"
+chipbench_config = "${SUPERBLUE_OPENROAD_CONFIG_ROOT}/superblue5/config.mk"
+mode = "global"
+
+[[designs]]
+name = "superblue7_ot_notiming"
+dreamplace_config = "../dreamplace_base/iccad2015_notiming/superblue7_ot_notiming.json"
+chipbench_config = "${SUPERBLUE_OPENROAD_CONFIG_ROOT}/superblue7/config.mk"
+mode = "global"
+
+[[designs]]
+name = "superblue10_ot_notiming"
+dreamplace_config = "../dreamplace_base/iccad2015_notiming/superblue10_ot_notiming.json"
+chipbench_config = "${SUPERBLUE_OPENROAD_CONFIG_ROOT}/superblue10/config.mk"
+mode = "global"
+
+[[designs]]
+name = "superblue16_ot_notiming"
+dreamplace_config = "../dreamplace_base/iccad2015_notiming/superblue16_ot_notiming.json"
+chipbench_config = "${SUPERBLUE_OPENROAD_CONFIG_ROOT}/superblue16/config.mk"
+mode = "global"
+
+[[designs]]
+name = "superblue18_ot_notiming"
+dreamplace_config = "../dreamplace_base/iccad2015_notiming/superblue18_ot_notiming.json"
+chipbench_config = "${SUPERBLUE_OPENROAD_CONFIG_ROOT}/superblue18/config.mk"
+mode = "global"

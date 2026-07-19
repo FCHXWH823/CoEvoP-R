@@ -1,0 +1,89 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2381f4f..0000000 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -128,8 +128,14 @@ if (CUDA_FOUND)
+     endif(${CUDA_VERSION_MAJOR} VERSION_GREATER "10")
+   endif(NOT CMAKE_CUDA_ARCHITECTURES)
+
+-  # for cuda_add_library
+-  cuda_select_nvcc_arch_flags(CUDA_ARCH_FLAGS ${CMAKE_CUDA_ARCHITECTURES})
++  # FindCUDA's architecture table predates Blackwell. Generate the same
++  # -gencode pairs directly so an official release can be built on a modern
++  # machine without modifying placement behavior.
++  set(CUDA_ARCH_FLAGS)
++  foreach(_arch ${CMAKE_CUDA_ARCHITECTURES})
++    string(REPLACE "." "" _arch_num ${_arch})
++    list(APPEND CUDA_ARCH_FLAGS "-gencode" "arch=compute_${_arch_num},code=sm_${_arch_num}")
++  endforeach()
+   message(STATUS "CUDA_ARCH_FLAGS: ${CUDA_ARCH_FLAGS}")
+   list(APPEND CUDA_NVCC_FLAGS ${CUDA_ARCH_FLAGS} --compiler-options;-fPIC)
+ endif(CUDA_FOUND)
+diff --git a/dreamplace/ops/utility/src/utils_cub.cuh b/dreamplace/ops/utility/src/utils_cub.cuh
+index 3e53a76..0000000 100644
+--- a/dreamplace/ops/utility/src/utils_cub.cuh
++++ b/dreamplace/ops/utility/src/utils_cub.cuh
+@@ -11,13 +11,12 @@
+
+ #include "utility/src/namespace.h"
+
+-// include cub in a safe manner
+-#define CUB_NS_PREFIX namespace DREAMPLACE_NAMESPACE {
+-#define CUB_NS_POSTFIX }
+-#define CUB_NS_QUALIFIER DREAMPLACE_NAMESPACE::cub
++// CUDA 12 CUB no longer supports CUB_NS_PREFIX/CUB_NS_POSTFIX. Include CUB
++// globally and preserve DREAMPlace's qualified references through an alias.
+ #include "cub/cub.cuh"
+-#undef CUB_NS_QUALIFIER
+-#undef CUB_NS_POSTFIX
+-#undef CUB_NS_PREFIX
++
++DREAMPLACE_BEGIN_NAMESPACE
++namespace cub = ::cub;
++DREAMPLACE_END_NAMESPACE
+
+ #endif
+diff --git a/dreamplace/ops/utility/src/torch.h b/dreamplace/ops/utility/src/torch.h
+index 8496671..0000000 100644
+--- a/dreamplace/ops/utility/src/torch.h
++++ b/dreamplace/ops/utility/src/torch.h
+@@ -10,7 +10,19 @@
+ /// As torch may change the header inclusion conventions, it is better to manage
+ /// it in a consistent way.
+ #if TORCH_VERSION_MAJOR >= 1
++// Limbo defines assert_msg before this header is reached from place_io. Modern
++// PyTorch uses the same token in its interned-symbol table, so temporarily hide
++// the Limbo macro while parsing torch headers and restore it afterwards.
++#ifdef assert_msg
++#pragma push_macro("assert_msg")
++#undef assert_msg
++#define DREAMPLACE_RESTORE_ASSERT_MSG
++#endif
+ #include <torch/extension.h>
++#ifdef DREAMPLACE_RESTORE_ASSERT_MSG
++#pragma pop_macro("assert_msg")
++#undef DREAMPLACE_RESTORE_ASSERT_MSG
++#endif
+
+ #if TORCH_VERSION_MAJOR == 1 && TORCH_VERSION_MINOR < 3
+
+diff --git a/thirdparty/OpenTimer/CMakeLists.txt b/thirdparty/OpenTimer/CMakeLists.txt
+index 4c4fa53..0000000 100644
+--- a/thirdparty/OpenTimer/CMakeLists.txt
++++ b/thirdparty/OpenTimer/CMakeLists.txt
+@@ -266,10 +266,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/unittest)
+
+ # Rename the executable from utility to util in order to avoid the
+ # name conflict with the library name in dreamplace.
+-add_executable(util unittest/utility.cpp)
++# The vendored doctest predates glibc's dynamic SIGSTKSZ. These test-only
++# binaries are not runtime dependencies, so keep them available explicitly
++# without making them part of the default installation build.
++add_executable(util EXCLUDE_FROM_ALL unittest/utility.cpp)
+ target_link_libraries(util ${OT_LINK_FLAGS})
+
+-add_executable(path unittest/path.cpp)
++add_executable(path EXCLUDE_FROM_ALL unittest/path.cpp)
+ target_link_libraries(path ${OT_LINK_FLAGS})
+
+ add_test(ut.utility ${OT_UNITTEST_DIR}/utility -d yes)

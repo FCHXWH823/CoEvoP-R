@@ -1,0 +1,74 @@
+--- a/dreamplace/ops/timing/src/timing_cpp.cpp
++++ b/dreamplace/ops/timing/src/timing_cpp.cpp
+@@ -25,17 +25,50 @@
+   return name;
+ }
+
++static inline std::string coevopTimingDotAlias(std::string name) {
++  name.erase(std::remove(name.begin(), name.end(), '\\'), name.end());
++  std::replace(name.begin(), name.end(), '/', '.');
++  return name;
++}
++
++static inline void coevopInsertTimingAlias(
++    std::unordered_map<std::string, std::string>& aliases,
++    const std::string& alias,
++    const std::string& canonical) {
++  if (!alias.empty()) aliases.emplace(alias, canonical);
++}
++
+ template <typename MapT>
+ static inline std::unordered_map<std::string, std::string>
+ coevopBuildTimingAliasMap(const MapT& objects) {
+   std::unordered_map<std::string, std::string> aliases;
+-  aliases.reserve(objects.size() * 3);
++  aliases.reserve(objects.size() * 12);
+   for (const auto& kv : objects) {
+-    aliases.emplace(kv.first, kv.first);
+-    aliases.emplace(coevopTimingAlias(kv.first), kv.first);
+-    std::string dotted = kv.first;
+-    std::replace(dotted.begin(), dotted.end(), '/', '.');
+-    aliases.emplace(dotted, kv.first);
++    const auto& canonical = kv.first;
++    coevopInsertTimingAlias(aliases, canonical, canonical);
++    coevopInsertTimingAlias(aliases, coevopTimingAlias(canonical), canonical);
++    coevopInsertTimingAlias(aliases, coevopTimingDotAlias(canonical), canonical);
++
++    // OpenTimer cell pins are stored as "instance:pin". DREAMPlace/DEF pin
++    // names commonly arrive as "instance/pin", and hierarchical instance
++    // names may also have been flattened from "/" to "_" in timing Verilog.
++    // Add all common separator variants so the RC-tree builder does not drop
++    // almost every net as pin-incomplete.
++    const auto colon = canonical.rfind(':');
++    if (colon != std::string::npos) {
++      const auto inst = canonical.substr(0, colon);
++      const auto pin = canonical.substr(colon + 1);
++      const auto inst_flat = coevopTimingAlias(inst);
++      const auto inst_dot = coevopTimingDotAlias(inst);
++      coevopInsertTimingAlias(aliases, inst + "/" + pin, canonical);
++      coevopInsertTimingAlias(aliases, inst + "." + pin, canonical);
++      coevopInsertTimingAlias(aliases, inst_flat + ":" + pin, canonical);
++      coevopInsertTimingAlias(aliases, inst_flat + "/" + pin, canonical);
++      coevopInsertTimingAlias(aliases, inst_flat + "." + pin, canonical);
++      coevopInsertTimingAlias(aliases, inst_dot + ":" + pin, canonical);
++      coevopInsertTimingAlias(aliases, inst_dot + "/" + pin, canonical);
++      coevopInsertTimingAlias(aliases, inst_dot + "." + pin, canonical);
++    }
+   }
+   return aliases;
+ }
+@@ -47,6 +80,15 @@
+   if (iter != aliases.end()) return iter->second;
+   iter = aliases.find(coevopTimingAlias(name));
+   if (iter != aliases.end()) return iter->second;
++  iter = aliases.find(coevopTimingDotAlias(name));
++  if (iter != aliases.end()) return iter->second;
++  auto slash = name.rfind('/');
++  if (slash != std::string::npos) {
++    auto candidate = coevopTimingAlias(name.substr(0, slash)) + ":" +
++                     name.substr(slash + 1);
++    iter = aliases.find(candidate);
++    if (iter != aliases.end()) return iter->second;
++  }
+   return std::string();
+ }

@@ -1,0 +1,24 @@
+seeds = [1000, 1001, 1002]
+iterations = 1000
+gpu = 1
+timeout_seconds = 14400
+log_interval = 25
+timing_mode = "none"
+
+[[designs]]
+name = "gcd"
+dreamplace_config = "../dreamplace_base/asap7/gcd.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/asap7/gcd/config.mk"
+mode = "global"
+
+[[designs]]
+name = "ibex"
+dreamplace_config = "../dreamplace_base/asap7/ibex.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/asap7/ibex/config.mk"
+mode = "global"
+
+[[designs]]
+name = "ariane"
+dreamplace_config = "../dreamplace_base/asap7/ariane.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/asap7/ariane/config.mk"
+mode = "global"

@@ -1,0 +1,24 @@
+# Local paths may be overridden through the corresponding environment variables.
+dreamplace_root = "${DREAMPLACE_ROOT}"
+chipbench_root = "${CHIPBENCH_ROOT}"
+openroad_flow_root = "${OPENROAD_FLOW_ROOT}"
+run_root = "runs"
+
+llm_provider = "openai"
+openroad_backend = "chipbench"
+
+[objective]
+interface = "typed_policy_v1"
+max_ast_depth = 10
+max_primitive_count = 12
+min_constant = 1e-6
+max_constant = 1e6
+
+[evolution]
+config = "configs/openevolve_tier2/chipbench_controller_tier2.toml"
+minimum_scoring_iterations = 1000
+require_full_iteration_budget = true
+
+[evaluation]
+timing_proxy_panel = "configs/timing_panels/chipbench_proxy_audit.toml"
+post_route_panel = "configs/shared_panels/chipbench_table1_post_route.toml"

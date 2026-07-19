@@ -1,0 +1,21 @@
+# Non-scoring typed-controller identity smoke on corrected mixed-size inputs.
+# Both designs retain movable macros; paper evidence must use the separate
+# 1000-iteration, three-seed panels after this execution-path check passes.
+
+seeds = [1000]
+iterations = 50
+gpu = 1
+timeout_seconds = 1800
+log_interval = 5
+timing_mode = "none"
+stop_overflow = 0.0
+
+[[designs]]
+name = "bp_fe"
+dreamplace_config = "../dreamplace_base/chipbench_movable/bp_fe.json"
+timing_mode = "none"
+
+[[designs]]
+name = "bp_be"
+dreamplace_config = "../dreamplace_base/chipbench_movable/bp_be.json"
+timing_mode = "none"

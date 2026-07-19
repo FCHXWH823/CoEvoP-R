@@ -1,0 +1,63 @@
+# Paper evaluation panel for the eight ChiPBench Nangate45 designs.
+seeds = [1000, 1001, 1002]
+iterations = 1000
+gpu = 1
+timeout_seconds = 14400
+log_interval = 25
+timing_mode = "none"
+
+[[designs]]
+name = "bp_fe"
+dreamplace_config = "../dreamplace_base/chipbench_movable/bp_fe.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/nangate45/bp_fe_top/config.mk"
+mode = "global"
+freeze_placed_macros_for_routing = true
+
+[[designs]]
+name = "bp_be"
+dreamplace_config = "../dreamplace_base/chipbench_movable/bp_be.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/nangate45/bp_be_top/config.mk"
+mode = "global"
+freeze_placed_macros_for_routing = true
+
+[[designs]]
+name = "swerv_wrapper"
+dreamplace_config = "../dreamplace_base/chipbench_movable/swerv_wrapper.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/nangate45/swerv_wrapper/config.mk"
+mode = "global"
+freeze_placed_macros_for_routing = true
+
+[[designs]]
+name = "ethernet"
+dreamplace_config = "../dreamplace_base/chipbench_movable/ethernet.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/nangate45/ethernet/config.mk"
+mode = "global"
+freeze_placed_macros_for_routing = true
+
+[[designs]]
+name = "dft68"
+dreamplace_config = "../dreamplace_base/chipbench_movable/dft68.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/nangate45/dft68/config.mk"
+mode = "global"
+freeze_placed_macros_for_routing = true
+
+[[designs]]
+name = "or1200"
+dreamplace_config = "../dreamplace_base/chipbench_movable/or1200.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/nangate45/or1200/config.mk"
+mode = "global"
+freeze_placed_macros_for_routing = true
+
+[[designs]]
+name = "vga_lcd"
+dreamplace_config = "../dreamplace_base/chipbench_movable/vga_lcd.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/nangate45/vga_lcd/config.mk"
+mode = "global"
+freeze_placed_macros_for_routing = true
+
+[[designs]]
+name = "mor1kx"
+dreamplace_config = "../dreamplace_base/chipbench_movable/mor1kx.json"
+chipbench_config = "${CHIPBENCH_ROOT}/flow/designs/nangate45/mor1kx/config.mk"
+mode = "global"
+freeze_placed_macros_for_routing = true

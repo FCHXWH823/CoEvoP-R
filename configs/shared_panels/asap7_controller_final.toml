@@ -1,0 +1,22 @@
+seeds = [1000, 1001, 1002]
+iterations = 1000
+stop_overflow = 0.0
+gpu = 1
+timeout_seconds = 7200
+log_interval = 10
+timing_mode = "none"
+
+[[designs]]
+name = "gcd"
+dreamplace_config = "../dreamplace_base/asap7/gcd.json"
+timing_mode = "none"
+
+[[designs]]
+name = "ibex"
+dreamplace_config = "../dreamplace_base/asap7/ibex.json"
+timing_mode = "none"
+
+[[designs]]
+name = "ariane"
+dreamplace_config = "../dreamplace_base/asap7/ariane.json"
+timing_mode = "none"

@@ -1,0 +1,1397 @@
+diff --git a/dreamplace/NonLinearPlace.py b/dreamplace/NonLinearPlace.py
+index 054e4aa..ae5f58f 100644
+--- a/dreamplace/NonLinearPlace.py
++++ b/dreamplace/NonLinearPlace.py
+@@ -394,6 +394,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
+                     # handle multiple density weights for multi-electric field
+                     if torch.eq(model.density_weight.mean(), 0.0):
+                         model.initialize_density_weight(params, placedb)
++                        if getattr(model, "custom_objective_spec", None) is not None:
++                            model.coevop_sync_native_identity_state()
+                         if model.density_weight.size(0) == 1:
+                             logging.info("density_weight = %.6E" % (model.density_weight.data))
+                         else:
+@@ -481,10 +483,19 @@ class NonLinearPlace(BasicPlace.BasicPlace):
+                         # Temporary solution: modify net weights
+                         beg = time.time()
+ 
++                        coevop_previous_net_weights = None
++                        if getattr(model, "custom_objective_spec", None) is not None and \
++                            model.custom_objective_spec.get("net_weight_policy"):
++                            coevop_previous_net_weights = placedb.net_weights.copy()
++
+                         timing_op.update_net_weights(
+                             max_net_weight=placedb.max_net_weight,
+                             n=npaths)
+                         
++                        if coevop_previous_net_weights is not None:
++                            model.coevop_update_net_weights(
++                                timing_op, coevop_previous_net_weights, iteration
++                            )
+                         # For HeteroSTA, net_weights are modified in-place on GPU - no copy needed
+                         # For OpenTimer, we still need to copy from placedb to device
+ 
+@@ -707,6 +718,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
+                                 else Lgamma_metrics[-2][-1][-1],
+                                 Llambda_flat_iteration,
+                             )
++                        # CoEvoP&R DSL v2: advance controller observables and
++                        # state registers at the native update cadence.
++                        if getattr(model, "custom_objective_spec", None) is not None:
++                            model.coevop_update_state(Llambda_metrics[-1][-1], iteration)
+                         # logging.debug("update density weight %.3f ms" % ((time.time()-t2)*1000))
+                         if Llambda_stop_criterion(Lgamma_step, Llambda_density_weight_step, Llambda_metrics):
+                             break
+@@ -774,7 +789,9 @@ class NonLinearPlace(BasicPlace.BasicPlace):
+                                 model.op_collections.density_overflow_op.reset()
+                                 model.op_collections.pin_utilization_map_op.reset()
+                                 model.initialize_density_weight(params, placedb)
+                                 model.density_weight.mul_(0.1 / params.density_weight)
++                                if getattr(model, "custom_objective_spec", None) is not None:
++                                    model.coevop_sync_native_identity_state()
+                                 logging.info("density_weight = %.6E" % (model.density_weight.data))
+                                 # load state to restart the optimizer
+                                 optimizer.load_state_dict(initial_state)
+@@ -793,6 +810,10 @@ class NonLinearPlace(BasicPlace.BasicPlace):
+                         model.op_collections.update_gamma_op(Lgamma_step, Llambda_metrics[-1][-1].overflow)
+                     else:
+                         model.op_collections.precondition_op.set_overflow(Llambda_metrics[-1][-1].overflow)
++                    if getattr(model, "custom_objective_spec", None) is not None:
++                        # Generated typed policies own gamma; the native update
++                        # above remains available only as a shadow diagnostic.
++                        model.coevop_apply_gamma_policy()
+                     if Lgamma_stop_criterion(Lgamma_step, Lgamma_metrics) or stop_placement == 1:
+                         break
+ 
+@@ -936,4 +957,4 @@ class NonLinearPlace(BasicPlace.BasicPlace):
+         # plot placement
+         if params.plot_flag:
+             self.plot(params, placedb, iteration, cur_pos)
+-        return all_metrics
+\ No newline at end of file
++        return all_metrics
+diff --git a/dreamplace/PlaceObj.py b/dreamplace/PlaceObj.py
+index c1d45e2..c5d37eb 100644
+--- a/dreamplace/PlaceObj.py
++++ b/dreamplace/PlaceObj.py
+@@ -8,6 +8,7 @@
+ import os
+ import sys
+ import time
++import math
+ import numpy as np
+ import itertools
+ import logging
+@@ -17,6 +18,7 @@ import torch.nn as nn
+ import torch.nn.functional as F
+ import pdb
+ import gzip
++import json
+ if sys.version_info[0] < 3:
+     import cPickle as pickle
+ else:
+@@ -138,6 +140,31 @@ class PlaceObj(nn.Module):
+         wirelength + density_weight * density penalty
+     It includes various ops related to global placement as well.
+     """
++    _COEVOP_DEPLOYABLE_TERMS = {
++        "native_objective",
++        "wirelength",
++        "wirelength_wawl",
++        "wirelength_lse",
++        "density",
++        "density_electric",
++        "density_bell",
++        "soft_rudy_mean",
++        "soft_rudy_pnorm",
++        "route_pressure_long",
++        "pin_density_pnorm",
++        "pin_count_weighted_wl",
++        "timing_weighted_wirelength",
++    }
++    _COEVOP_PNORM = 8.0
++    _COEVOP_TYPED_POLICY_INTERFACE = "typed_policy_v1"
++    _COEVOP_TYPED_REQUIRED_SLOTS = {"density_weight", "gamma_scale"}
++    _COEVOP_TYPED_OPTIONAL_SLOTS = {"route_weight", "pin_weight"}
++    _COEVOP_GAMMA_SCALE_MIN = 10.0 ** (-1.0 - 2.0 / 9.0)
++    _COEVOP_GAMMA_SCALE_MAX = 10.0
++    _COEVOP_UNARY_OPS = {"log1p", "sqrt", "square", "softplus", "sigmoid"}
++    _COEVOP_BINARY_OPS = {"sub", "safe_div"}
++    _COEVOP_VARIADIC_OPS = {"add", "mul"}
++
+     def __init__(self, density_weight, params, placedb, data_collections,
+                  op_collections, global_place_params):
+         """
+@@ -180,6 +207,57 @@ class PlaceObj(nn.Module):
+         self.op_collections = op_collections
+         self.global_place_params = global_place_params
+ 
++        self.custom_objective_spec = self._coevop_load_custom_objective_spec(
++            getattr(params, "custom_objective_spec", None)
++        )
++        self.custom_objective_call_count = 0
++        self.custom_objective_term_scales = {}
++        self.custom_objective_last_terms = {}
++        self.custom_objective_last_components = {}
++        self._coevop_native_objective = None
++        self._coevop_long_route_threshold = None
++        self._coevop_long_route_temperature = None
++        object.__setattr__(self, "_coevop_current_pos", None)
++        object.__setattr__(self, "_coevop_soft_route_cache", None)
++        self.custom_objective_log_interval = int(
++            getattr(params, "custom_objective_log_interval", 50) or 50
++        )
++        # DSL v2 stateful controller support.
++        # semantics: "normalized" (v1 frozen value scales) or "raw" (controller mode).
++        self.custom_objective_semantics = str(
++            getattr(params, "custom_objective_semantics", "normalized") or "normalized"
++        )
++        self.custom_state = {}
++        self.custom_state_trajectory = []
++        self._coevop_state_initialized = False
++        self._coevop_grad_ratio_cache = {}
++        self._coevop_init_value_cache = {}
++        self._coevop_component_grad_ratio_cache = {}
++        self._coevop_component_init_value_cache = {}
++        self._coevop_gamma0 = None
++        self._coevop_base_gamma = None
++        self._coevop_obs_overflow = 1.0
++        self._coevop_obs_hpwl_delta_rate = 0.0
++        self._coevop_obs_prev_hpwl = None
++        self._coevop_obs_iteration = 0
++        self._coevop_timing_update_count = 0
++        self._coevop_iteration_budget = max(
++            int(global_place_params.get("iteration", 1000) or 1000), 1
++        )
++        if self.custom_objective_spec is not None:
++            if self.custom_objective_spec.get("state") and len(placedb.regions) > 0:
++                raise ValueError(
++                    "CoEvoP&R stateful controller objectives do not support fence regions"
++                )
++            logging.info(
++                "CoEvoP&R custom objective enabled: %s semantics=%s stateful=%s"
++                % (
++                    self.custom_objective_spec["id"],
++                    self.custom_objective_semantics,
++                    bool(self.custom_objective_spec.get("state")),
++                )
++            )
++
+         self.gpu = params.gpu
+         self.data_collections = data_collections
+         self.op_collections = op_collections
+@@ -203,6 +281,7 @@ class PlaceObj(nn.Module):
+         self.num_bins_y = num_bins_y
+         self.bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
+         self.bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
++        self._coevop_base_gamma = float(self.base_gamma(params, placedb))
+         self.gamma = torch.tensor(10 * self.base_gamma(params, placedb),
+                                   dtype=self.data_collections.pos[0].dtype,
+                                   device=self.data_collections.pos[0].device)
+@@ -238,6 +317,11 @@ class PlaceObj(nn.Module):
+             self.num_bins_x,
+             self.num_bins_y,
+             name=name)
++        if self.custom_objective_spec is not None:
++            self._coevop_build_extra_ops(
++                params, placedb, self.data_collections,
++                self.num_bins_x, self.num_bins_y, name
++            )
+         ### build multiple density op for multi-electric field
+         if len(self.placedb.regions) > 0:
+             self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op, self.op_collections.fence_region_density_overflow_merged_op = self.build_multi_fence_region_density_op()
+@@ -290,6 +374,1073 @@ class PlaceObj(nn.Module):
+             self.routability_Lsub_iteration = self.Lsub_iteration
+         self.start_fence_region_density = False
+ 
++    def _coevop_build_extra_ops(self, params, placedb, data_collections, num_bins_x, num_bins_y, name):
++        self._coevop_wirelength_wawl_op, _ = self.build_weighted_average_wl(
++            params, placedb, data_collections, self.op_collections.pin_pos_op
++        )
++        self._coevop_wirelength_lse_op = self._coevop_build_logsumexp_wl(
++            params, placedb, data_collections, self.op_collections.pin_pos_op
++        )
++        self._coevop_pin_count_weighted_wl_op = self._coevop_build_pin_count_weighted_wl(
++            params, placedb, data_collections, self.op_collections.pin_pos_op
++        )
++        self._coevop_density_bell_op = self.build_density_potential(
++            params, placedb, data_collections, num_bins_x, num_bins_y, 0, name + " CoEvoP&R density_bell"
++        )
++
++    def _coevop_build_logsumexp_wl(self, params, placedb, data_collections, pin_pos_op):
++        wirelength_for_pin_op = logsumexp_wirelength.LogSumExpWirelength(
++            flat_netpin=data_collections.flat_net2pin_map,
++            netpin_start=data_collections.flat_net2pin_start_map,
++            pin2net_map=data_collections.pin2net_map,
++            net_weights=data_collections.net_weights,
++            net_mask=data_collections.net_mask_ignore_large_degrees,
++            pin_mask=data_collections.pin_mask_ignore_fixed_macros,
++            gamma=self.gamma,
++            algorithm='merged')
++        logging.info("CoEvoP&R wirelength_lse uses live DREAMPlace gamma tensor")
++        def build_wirelength_op(pos):
++            return wirelength_for_pin_op(pin_pos_op(pos))
++        return build_wirelength_op
++
++    def _coevop_build_pin_count_weighted_wl(self, params, placedb, data_collections, pin_pos_op):
++        starts = data_collections.flat_net2pin_start_map
++        pin_counts = (starts[1:] - starts[:-1]).to(dtype=data_collections.pos[0].dtype)
++        weights = torch.sqrt(torch.clamp(pin_counts, min=1.0))
++        weights = weights / torch.clamp(torch.mean(weights), min=1e-6)
++        if hasattr(data_collections, "net_weights") and data_collections.net_weights is not None:
++            weights = weights * data_collections.net_weights.detach().clone()
++        wirelength_for_pin_op = weighted_average_wirelength.WeightedAverageWirelength(
++            flat_netpin=data_collections.flat_net2pin_map,
++            netpin_start=data_collections.flat_net2pin_start_map,
++            pin2net_map=data_collections.pin2net_map,
++            net_weights=weights,
++            net_mask=data_collections.net_mask_ignore_large_degrees,
++            pin_mask=data_collections.pin_mask_ignore_fixed_macros,
++            gamma=self.gamma,
++            algorithm='merged')
++        logging.info("CoEvoP&R pin_count_weighted_wl mean_weight=%.6E" % float(torch.mean(weights).detach().cpu().item()))
++        def build_wirelength_op(pos):
++            return wirelength_for_pin_op(pin_pos_op(pos))
++        return build_wirelength_op
++
++    def _coevop_load_custom_objective_spec(self, custom_objective_spec):
++        if not custom_objective_spec:
++            return None
++        if isinstance(custom_objective_spec, dict):
++            spec = custom_objective_spec
++        else:
++            spec_path = os.path.expanduser(str(custom_objective_spec))
++            with open(spec_path, "r") as f:
++                spec = json.load(f)
++        ast = spec.get("ast", spec)
++        state = spec.get("state") or None
++        registers = {}
++        state_interface = None
++        state_control = "generated"
++        if state is not None:
++            if not isinstance(state, dict) or not isinstance(state.get("registers"), dict):
++                raise ValueError("CoEvoP&R custom objective state must contain registers")
++            registers = state["registers"]
++            state_interface = str(state.get("interface", "legacy_state_v1"))
++            state_control = str(state.get("control", "generated"))
++            if state_control not in {"generated", "native_identity"}:
++                raise ValueError("unsupported CoEvoP&R state control %s" % state_control)
++            if not registers or len(registers) > 4:
++                raise ValueError("CoEvoP&R custom objective requires 1..4 state registers")
++            for register_name, entry in registers.items():
++                if not isinstance(register_name, str) or not register_name:
++                    raise ValueError("CoEvoP&R register names must be non-empty strings")
++                if not isinstance(entry, dict) or "init" not in entry or "update" not in entry:
++                    raise ValueError(
++                        "CoEvoP&R register %s must define init and update" % register_name
++                    )
++                self._coevop_validate_custom_ast(
++                    entry["init"], allow_state=set(), allow_obs=True
++                )
++                self._coevop_validate_custom_ast(
++                    entry["update"], allow_state=set(registers), allow_obs=True
++                )
++            if state_interface == self._COEVOP_TYPED_POLICY_INTERFACE:
++                names = set(registers)
++                missing = self._COEVOP_TYPED_REQUIRED_SLOTS - names
++                unknown = names - (
++                    self._COEVOP_TYPED_REQUIRED_SLOTS | self._COEVOP_TYPED_OPTIONAL_SLOTS
++                )
++                if missing or unknown:
++                    raise ValueError(
++                        "typed CoEvoP&R policy slots invalid: missing=%s unknown=%s"
++                        % (sorted(missing), sorted(unknown))
++                    )
++        self._coevop_validate_custom_ast(ast, allow_state=set(registers), allow_obs=False)
++        components = spec.get("components", {})
++        if components is None:
++            components = {}
++        if not isinstance(components, dict):
++            raise ValueError("CoEvoP&R custom objective components must be a dict")
++        for component_name, component_ast in components.items():
++            if not isinstance(component_name, str):
++                raise ValueError("CoEvoP&R custom objective component names must be strings")
++            self._coevop_validate_custom_ast(
++                component_ast, allow_state=set(registers), allow_obs=False
++            )
++        result = {
++            "id": str(spec.get("id", "custom_objective")),
++            "ast": ast,
++            "components": components,
++        }
++        if state is not None:
++            result["state"] = {
++                "registers": registers,
++                "interface": state_interface,
++                "control": state_control,
++            }
++        net_weight_policy = spec.get("net_weight_policy") or None
++        if net_weight_policy is not None:
++            # Per-net weight updates require periodic timing-analysis collateral.
++            if not int(getattr(self.params, "timing_controller_enabled", 0) or 0):
++                raise ValueError(
++                    "CoEvoP&R net_weight_policy requires timing_controller_enabled=1"
++                )
++            if not isinstance(net_weight_policy, dict) or "update" not in net_weight_policy:
++                raise ValueError("CoEvoP&R net_weight_policy must define an update expression")
++            control = str(net_weight_policy.get("control", "generated"))
++            if control not in {"generated", "native_identity"}:
++                raise ValueError("unsupported CoEvoP&R net_weight_policy control %s" % control)
++            cadence = int(net_weight_policy.get("cadence", 1) or 1)
++            if cadence < 1:
++                raise ValueError("CoEvoP&R net_weight_policy cadence must be >= 1")
++            for clip_name in ("multiplier_clip", "weight_clip"):
++                if clip_name not in net_weight_policy:
++                    continue
++                bounds = net_weight_policy[clip_name]
++                if not isinstance(bounds, list) or len(bounds) != 2:
++                    raise ValueError("CoEvoP&R %s must be [lo, hi]" % clip_name)
++                if not (0.0 <= float(bounds[0]) <= float(bounds[1])):
++                    raise ValueError("CoEvoP&R %s requires 0 <= lo <= hi" % clip_name)
++            self._coevop_validate_custom_ast(
++                net_weight_policy["update"],
++                allow_state=set(registers),
++                allow_obs=True,
++                allow_net=True,
++            )
++            result["net_weight_policy"] = net_weight_policy
++        return result
++
++    _COEVOP_OBSERVABLES = {
++        "iter_frac",
++        "overflow",
++        "hpwl_delta_rate",
++        "gamma_frac",
++        "native_density_weight",
++    }
++    _COEVOP_GRAD_RATIO_PREFIX = "grad_ratio_"
++    _COEVOP_INIT_VALUE_PREFIX = "init_value_"
++    _COEVOP_COMPONENT_GRAD_RATIO_PREFIX = "grad_ratio_component_"
++    _COEVOP_COMPONENT_INIT_VALUE_PREFIX = "init_value_component_"
++
++    def _coevop_is_valid_observable(self, name):
++        if name in self._COEVOP_OBSERVABLES:
++            return True
++        if not isinstance(name, str):
++            return False
++        for prefix in (
++            self._COEVOP_COMPONENT_GRAD_RATIO_PREFIX,
++            self._COEVOP_COMPONENT_INIT_VALUE_PREFIX,
++        ):
++            if name.startswith(prefix):
++                return bool(name[len(prefix):])
++        for prefix in (self._COEVOP_GRAD_RATIO_PREFIX, self._COEVOP_INIT_VALUE_PREFIX):
++            if name.startswith(prefix):
++                return name[len(prefix):] in self._COEVOP_DEPLOYABLE_TERMS
++        return False
++
++    _COEVOP_NET_OBSERVABLES = {"criticality", "span", "fanout"}
++
++    def _coevop_validate_custom_ast(self, node, depth=1, allow_state=None, allow_obs=False, allow_net=False):
++        if depth > 10:
++            raise ValueError("CoEvoP&R custom objective AST depth exceeds 10")
++        if not isinstance(node, dict):
++            raise ValueError("CoEvoP&R custom objective node must be a dict")
++        op = node.get("op")
++        if op == "net":
++            if not allow_net:
++                raise ValueError(
++                    "CoEvoP&R net() nodes are only allowed in net_weight_policy updates"
++                )
++            if node.get("name") not in self._COEVOP_NET_OBSERVABLES:
++                raise ValueError(
++                    "unsupported CoEvoP&R per-net observable %s" % node.get("name")
++                )
++            return 1
++        if op == "term":
++            name = node.get("name")
++            if name not in self._COEVOP_DEPLOYABLE_TERMS:
++                raise ValueError("unsupported CoEvoP&R custom objective term %s" % name)
++            return 1
++        if op == "state":
++            name = node.get("name")
++            if allow_state is None or name not in allow_state:
++                raise ValueError(
++                    "CoEvoP&R state register %s not available in this expression" % name
++                )
++            return 1
++        if op == "obs":
++            name = node.get("name")
++            if not allow_obs:
++                raise ValueError(
++                    "CoEvoP&R obs() nodes are only allowed in state init/update"
++                )
++            if not self._coevop_is_valid_observable(name):
++                raise ValueError("unsupported CoEvoP&R observable %s" % name)
++            return 1
++        if op == "const":
++            value = float(node.get("value"))
++            if not np.isfinite(value):
++                raise ValueError("non-finite CoEvoP&R custom objective constant")
++            return 1
++        if op not in self._COEVOP_UNARY_OPS | self._COEVOP_BINARY_OPS | self._COEVOP_VARIADIC_OPS:
++            raise ValueError("unsupported CoEvoP&R custom objective op %s" % op)
++        args = node.get("args")
++        if not isinstance(args, list):
++            raise ValueError("CoEvoP&R custom objective op %s requires args" % op)
++        if op in self._COEVOP_UNARY_OPS and len(args) != 1:
++            raise ValueError("CoEvoP&R custom objective op %s requires one arg" % op)
++        if op in self._COEVOP_BINARY_OPS and len(args) != 2:
++            raise ValueError("CoEvoP&R custom objective op %s requires two args" % op)
++        if op in self._COEVOP_VARIADIC_OPS and not (2 <= len(args) <= 4):
++            raise ValueError("CoEvoP&R custom objective op %s requires two to four args" % op)
++        count = 1
++        for child in args:
++            count += self._coevop_validate_custom_ast(
++                child, depth + 1, allow_state=allow_state, allow_obs=allow_obs,
++                allow_net=allow_net,
++            )
++        if count > 12:
++            raise ValueError("CoEvoP&R custom objective AST primitive count exceeds 12")
++        return count
++
++    # ------------------------------------------------------------------
++    # DSL v2: scalar state machinery.
++    # Register updates run once per density-weight iteration (NonLinearPlace
++    # calls coevop_update_state). Values are detached device scalars so the
++    # controller cannot backpropagate through history and does not incur a
++    # Python-float round trip on the identity path.
++    # ------------------------------------------------------------------
++
++    def _coevop_state_tensor(self, value):
++        reference = self.data_collections.pos[0]
++        if isinstance(value, torch.Tensor):
++            return value.detach().to(device=reference.device, dtype=reference.dtype).reshape(())
++        return reference.new_tensor(float(value)).reshape(())
++
++    def _coevop_eval_scalar_ast(self, node, state):
++        op = node["op"]
++        if op == "state":
++            return self._coevop_state_tensor(state[node["name"]])
++        if op == "obs":
++            return self._coevop_state_tensor(self._coevop_observable(node["name"]))
++        if op == "const":
++            return self._coevop_state_tensor(node["value"])
++        args = [self._coevop_eval_scalar_ast(child, state) for child in node.get("args", [])]
++        if op == "add":
++            result = args[0]
++            for value in args[1:]:
++                result = result + value
++            return result
++        if op == "sub":
++            return args[0] - args[1]
++        if op == "mul":
++            result = args[0]
++            for value in args[1:]:
++                result = result * value
++            return result
++        if op == "safe_div":
++            eps = args[1].new_tensor(1e-6)
++            denom = args[1]
++            denom = torch.where(denom < 0, torch.minimum(denom, -eps), torch.maximum(denom, eps))
++            return args[0] / denom
++        if op == "log1p":
++            return torch.log1p(torch.clamp(args[0], min=-0.999999))
++        if op == "sqrt":
++            return torch.sqrt(torch.clamp(args[0], min=0.0))
++        if op == "square":
++            return args[0] * args[0]
++        if op == "softplus":
++            return F.softplus(args[0])
++        if op == "sigmoid":
++            return torch.sigmoid(args[0])
++        raise ValueError("unsupported CoEvoP&R scalar op %s" % op)
++
++    def _coevop_observable(self, name):
++        if name == "iter_frac":
++            return min(max(self._coevop_obs_iteration / float(self._coevop_iteration_budget), 0.0), 1.0)
++        if name == "overflow":
++            return float(self._coevop_obs_overflow)
++        if name == "hpwl_delta_rate":
++            return float(self._coevop_obs_hpwl_delta_rate)
++        if name == "gamma_frac":
++            if self._coevop_base_gamma <= 0:
++                return 1.0
++            return float(self.gamma.detach().cpu().item()) / self._coevop_base_gamma
++        if name == "native_density_weight":
++            return (
++                self.density_factor * self.density_weight
++            ).detach().reshape(-1)[0]
++        if name.startswith(self._COEVOP_COMPONENT_GRAD_RATIO_PREFIX):
++            return self._coevop_component_grad_ratio(
++                name[len(self._COEVOP_COMPONENT_GRAD_RATIO_PREFIX):]
++            )
++        if name.startswith(self._COEVOP_COMPONENT_INIT_VALUE_PREFIX):
++            return self._coevop_component_init_value(
++                name[len(self._COEVOP_COMPONENT_INIT_VALUE_PREFIX):]
++            )
++        if name.startswith(self._COEVOP_GRAD_RATIO_PREFIX):
++            return self._coevop_grad_ratio(name[len(self._COEVOP_GRAD_RATIO_PREFIX):])
++        if name.startswith(self._COEVOP_INIT_VALUE_PREFIX):
++            return self._coevop_init_value(name[len(self._COEVOP_INIT_VALUE_PREFIX):])
++        raise ValueError("unsupported CoEvoP&R observable %s" % name)
++
++    def _coevop_component_tensor(self, component_name):
++        components = self.custom_objective_spec.get("components", {})
++        if component_name not in components:
++            raise RuntimeError(
++                "CoEvoP&R component calibration requested unknown component %s"
++                % component_name
++            )
++        value = self._coevop_eval_custom_ast(components[component_name])
++        return value.sum() if value.numel() != 1 else value
++
++    def _coevop_component_init_value(self, component_name):
++        if component_name in self._coevop_component_init_value_cache:
++            return self._coevop_component_init_value_cache[component_name]
++        value = self._coevop_scalar(self._coevop_component_tensor(component_name))
++        if not np.isfinite(value):
++            raise RuntimeError(
++                "CoEvoP&R init_value_component_%s is non-finite" % component_name
++            )
++        self._coevop_component_init_value_cache[component_name] = value
++        logging.info(
++            "CoEvoP&R observable init_value_component_%s=%.6E"
++            % (component_name, value)
++        )
++        return value
++
++    def _coevop_component_grad_ratio(self, component_name):
++        if component_name in self._coevop_component_grad_ratio_cache:
++            return self._coevop_component_grad_ratio_cache[component_name]
++        pos = self._coevop_current_pos
++        if pos is None:
++            raise RuntimeError(
++                "CoEvoP&R component gradient calibration requires objective context"
++            )
++        wl_value = self._coevop_raw_term_value("wirelength_wawl")
++        component_value = self._coevop_component_tensor(component_name)
++        wl_grad = torch.autograd.grad(
++            wl_value, pos, retain_graph=True, allow_unused=True
++        )[0]
++        component_grad = torch.autograd.grad(
++            component_value, pos, retain_graph=True, allow_unused=True
++        )[0]
++        wl_norm = 0.0 if wl_grad is None else float(torch.norm(wl_grad.detach()).cpu().item())
++        component_norm = (
++            0.0
++            if component_grad is None
++            else float(torch.norm(component_grad.detach()).cpu().item())
++        )
++        ratio = wl_norm / max(component_norm, 1e-12)
++        if not np.isfinite(ratio):
++            raise RuntimeError(
++                "CoEvoP&R grad_ratio_component_%s is non-finite" % component_name
++            )
++        self._coevop_component_grad_ratio_cache[component_name] = ratio
++        logging.info(
++            "CoEvoP&R observable grad_ratio_component_%s=%.6E "
++            "(wl_grad=%.6E component_grad=%.6E)"
++            % (component_name, ratio, wl_norm, component_norm)
++        )
++        return ratio
++
++    def _coevop_init_value(self, term_name):
++        if term_name in self._coevop_init_value_cache:
++            return self._coevop_init_value_cache[term_name]
++        if self._coevop_current_pos is None:
++            raise RuntimeError(
++                "CoEvoP&R init_value observables require an objective evaluation context"
++            )
++        value = float(self._coevop_raw_term_value(term_name).detach().cpu().item())
++        if not np.isfinite(value):
++            raise RuntimeError(
++                "CoEvoP&R init_value_%s is non-finite" % term_name
++            )
++        self._coevop_init_value_cache[term_name] = value
++        logging.info(
++            "CoEvoP&R observable init_value_%s=%.6E" % (term_name, value)
++        )
++        return value
++
++    def _coevop_grad_ratio(self, term_name):
++        if term_name in self._coevop_grad_ratio_cache:
++            return self._coevop_grad_ratio_cache[term_name]
++        pos = self._coevop_current_pos
++        if pos is None:
++            raise RuntimeError(
++                "CoEvoP&R grad_ratio observables require an objective evaluation context"
++            )
++        wl_value = self._coevop_raw_term_value("wirelength_wawl")
++        term_value = self._coevop_raw_term_value(term_name)
++        wl_grad = torch.autograd.grad(
++            wl_value, pos, retain_graph=True, allow_unused=True
++        )[0]
++        term_grad = torch.autograd.grad(
++            term_value, pos, retain_graph=True, allow_unused=True
++        )[0]
++        wl_norm = 0.0 if wl_grad is None else float(torch.norm(wl_grad.detach()).cpu().item())
++        term_norm = 0.0 if term_grad is None else float(torch.norm(term_grad.detach()).cpu().item())
++        ratio = wl_norm / max(term_norm, 1e-12)
++        if not np.isfinite(ratio):
++            raise RuntimeError(
++                "CoEvoP&R grad_ratio_%s is non-finite (wl=%.3E term=%.3E)"
++                % (term_name, wl_norm, term_norm)
++            )
++        self._coevop_grad_ratio_cache[term_name] = ratio
++        logging.info(
++            "CoEvoP&R observable grad_ratio_%s=%.6E (wl_grad=%.6E term_grad=%.6E)"
++            % (term_name, ratio, wl_norm, term_norm)
++        )
++        return ratio
++
++    def _coevop_raw_term_value(self, name):
++        value = self._coevop_term_tensor(name)
++        if value.numel() != 1:
++            value = value.sum()
++        return value
++
++    def _coevop_init_state(self):
++        registers = self.custom_objective_spec.get("state", {}).get("registers", {})
++        if not registers:
++            self._coevop_state_initialized = True
++            return
++        state = {}
++        for name, entry in registers.items():
++            value = self._coevop_eval_scalar_ast(entry["init"], state={})
++            if not torch.isfinite(value).all():
++                raise RuntimeError(
++                    "CoEvoP&R state register %s initialized to non-finite value" % name
++                )
++            if name.endswith("_weight") and self._coevop_scalar(value) < 0.0:
++                raise RuntimeError(
++                    "CoEvoP&R physical weight %s initialized negative" % name
++                )
++            state[name] = value.detach()
++        self.custom_state = state
++        self._coevop_state_initialized = True
++        self._coevop_record_state_sample()
++        logging.info(
++            "CoEvoP&R state initialized %s"
++            % json.dumps(
++                {name: self._coevop_scalar(value) for name, value in self.custom_state.items()},
++                sort_keys=True,
++            )
++        )
++        self.coevop_apply_gamma_policy()
++
++    def coevop_sync_native_identity_state(self):
++        """Synchronize the privileged typed identity after native initialization.
++
++        DREAMPlace initializes its effective density coefficient lazily in the
++        first descent step. The typed identity may already have been evaluated
++        while that coefficient was zero for learning-rate estimation, so copy
++        the initialized device scalar at this exact lifecycle boundary.
++        """
++
++        if not self._coevop_native_identity_enabled() or not self._coevop_state_initialized:
++            return
++        if "density_weight" not in self.custom_state:
++            raise RuntimeError("typed native identity is missing density_weight")
++        self.custom_state["density_weight"] = self._coevop_observable(
++            "native_density_weight"
++        ).detach()
++        self._coevop_record_state_sample()
++        logging.info(
++            "CoEvoP&R native identity synchronized density_weight=%.6E"
++            % self._coevop_scalar(self.custom_state["density_weight"])
++        )
++
++    def coevop_update_state(self, cur_metric, iteration):
++        """Advance observables and state registers. Called once per density-weight
++        iteration from NonLinearPlace, mirroring the native update cadence."""
++
++        if self.custom_objective_spec is None:
++            return
++        overflow = getattr(cur_metric, "overflow", None)
++        if overflow is not None:
++            try:
++                self._coevop_obs_overflow = float(
++                    overflow.detach().cpu().reshape(-1)[0].item()
++                    if isinstance(overflow, torch.Tensor)
++                    else float(overflow)
++                )
++            except (TypeError, ValueError):
++                pass
++        hpwl = getattr(cur_metric, "hpwl", None)
++        if hpwl is not None:
++            try:
++                hpwl_value = float(
++                    hpwl.detach().cpu().item() if isinstance(hpwl, torch.Tensor) else float(hpwl)
++                )
++                if self._coevop_obs_prev_hpwl is not None:
++                    self._coevop_obs_hpwl_delta_rate = (
++                        hpwl_value - self._coevop_obs_prev_hpwl
++                    ) / max(self._coevop_obs_prev_hpwl, 1.0)
++                self._coevop_obs_prev_hpwl = hpwl_value
++            except (TypeError, ValueError):
++                pass
++        self._coevop_obs_iteration = int(iteration)
++
++        registers = self.custom_objective_spec.get("state", {}).get("registers", {})
++        if not registers or not self._coevop_state_initialized:
++            return
++        previous = dict(self.custom_state)
++        updated = {}
++        for name, entry in registers.items():
++            value = self._coevop_eval_scalar_ast(entry["update"], state=previous)
++            if not torch.isfinite(value).all():
++                raise RuntimeError(
++                    "CoEvoP&R state register %s updated to non-finite value at iteration %d"
++                    % (name, iteration)
++                )
++            if name.endswith("_weight") and self._coevop_scalar(value) < 0.0:
++                raise RuntimeError(
++                    "CoEvoP&R physical weight %s became negative at iteration %d"
++                    % (name, iteration)
++                )
++            updated[name] = value.detach()
++        self.custom_state = updated
++        self._coevop_record_state_sample()
++
++    def coevop_apply_gamma_policy(self):
++        state_spec = self.custom_objective_spec.get("state", {}) if self.custom_objective_spec else {}
++        if state_spec.get("interface") != self._COEVOP_TYPED_POLICY_INTERFACE:
++            return
++        if state_spec.get("control") == "native_identity":
++            return
++        if "gamma_scale" not in self.custom_state:
++            raise RuntimeError("typed CoEvoP&R policy is missing gamma_scale")
++        scale = self._coevop_scalar(self.custom_state["gamma_scale"])
++        if not np.isfinite(scale):
++            raise RuntimeError("typed CoEvoP&R gamma_scale is non-finite")
++        if scale < self._COEVOP_GAMMA_SCALE_MIN or scale > self._COEVOP_GAMMA_SCALE_MAX:
++            raise RuntimeError(
++                "typed CoEvoP&R gamma_scale %.6E is outside DREAMPlace bounds [%.6E, %.6E]"
++                % (scale, self._COEVOP_GAMMA_SCALE_MIN, self._COEVOP_GAMMA_SCALE_MAX)
++            )
++        with torch.no_grad():
++            self.gamma.data.fill_(self._coevop_base_gamma * scale)
++        if self._coevop_obs_iteration % max(self.custom_objective_log_interval, 1) == 0:
++            logging.info(
++                "CoEvoP&R gamma policy base=%.6E scale=%.6E effective=%.6E"
++                % (self._coevop_base_gamma, scale, self._coevop_scalar(self.gamma))
++            )
++
++    def _coevop_eval_net_ast(self, node, net_observables):
++        op = node["op"]
++        if op == "net":
++            return net_observables[node["name"]]
++        if op == "state":
++            return self._coevop_state_tensor(self.custom_state[node["name"]])
++        if op == "obs":
++            return self._coevop_state_tensor(self._coevop_observable(node["name"]))
++        if op == "const":
++            return self._coevop_state_tensor(node["value"])
++        args = [self._coevop_eval_net_ast(child, net_observables) for child in node.get("args", [])]
++        if op == "add":
++            result = args[0]
++            for value in args[1:]:
++                result = result + value
++            return result
++        if op == "sub":
++            return args[0] - args[1]
++        if op == "mul":
++            result = args[0]
++            for value in args[1:]:
++                result = result * value
++            return result
++        if op == "safe_div":
++            eps = args[1].new_tensor(1e-6)
++            denom = torch.where(args[1] < 0, torch.minimum(args[1], -eps), torch.maximum(args[1], eps))
++            return args[0] / denom
++        if op == "log1p":
++            return torch.log1p(torch.clamp(args[0], min=-0.999999))
++        if op == "sqrt":
++            return torch.sqrt(torch.clamp(args[0], min=0.0))
++        if op == "square":
++            return args[0] * args[0]
++        if op == "softplus":
++            return F.softplus(args[0])
++        if op == "sigmoid":
++            return torch.sigmoid(args[0])
++        raise ValueError("unsupported CoEvoP&R net policy op %s" % op)
++
++    def coevop_update_net_weights(self, timing_op, previous_net_weights, iteration):
++        policy = self.custom_objective_spec.get("net_weight_policy") if self.custom_objective_spec else None
++        if not policy:
++            return
++        self._coevop_timing_update_count += 1
++        if str(policy.get("control", "generated")) == "native_identity":
++            logging.info("CoEvoP&R timing identity preserved native DREAMPlace net weights")
++            logging.info(
++                "CoEvoP&R timing policy %s"
++                % json.dumps(
++                    {
++                        "control": "native_identity",
++                        "iteration": int(iteration),
++                        "update_count": self._coevop_timing_update_count,
++                    },
++                    sort_keys=True,
++                )
++            )
++            return
++        cadence = max(int(policy.get("cadence", 1) or 1), 1)
++        self.placedb.net_weights[:] = previous_net_weights
++        if self._coevop_timing_update_count % cadence != 0:
++            return
++
++        reference = self.data_collections.pos[0]
++        num_nets = int(self.placedb.num_nets)
++        criticality = torch.as_tensor(
++            timing_op.net_criticality, dtype=reference.dtype, device=reference.device
++        ).reshape(-1)[:num_nets]
++        route_terms = self._coevop_soft_route_terms()
++        span = route_terms["span"].detach().to(reference.device).reshape(-1)[:num_nets]
++        starts = self.data_collections.flat_net2pin_start_map
++        fanout = (starts[1:] - starts[:-1]).to(device=reference.device, dtype=reference.dtype)[:num_nets]
++
++        def normalize(values):
++            values = torch.clamp(values, min=0.0)
++            return values / torch.clamp(torch.max(values), min=1e-12)
++
++        net_observables = {
++            "criticality": normalize(criticality),
++            "span": normalize(span),
++            "fanout": normalize(fanout),
++        }
++        multiplier = self._coevop_eval_net_ast(policy["update"], net_observables)
++        if multiplier.numel() == 1:
++            multiplier = multiplier.expand(num_nets)
++        if int(multiplier.numel()) != num_nets or not torch.isfinite(multiplier).all():
++            raise RuntimeError("CoEvoP&R timing policy produced invalid per-net multipliers")
++        configured_max_weight = max(float(self.placedb.max_net_weight), 1.0)
++        derived_bounds = [0.0, configured_max_weight]
++        multiplier_bounds = policy.get("multiplier_clip", derived_bounds)
++        weight_bounds = policy.get("weight_clip", derived_bounds)
++        multiplier = torch.clamp(
++            multiplier, min=float(multiplier_bounds[0]), max=float(multiplier_bounds[1])
++        )
++        previous = torch.as_tensor(
++            previous_net_weights, dtype=reference.dtype, device=reference.device
++        ).reshape(-1)[:num_nets]
++        updated = torch.clamp(
++            previous * multiplier,
++            min=float(weight_bounds[0]),
++            max=float(weight_bounds[1]),
++        )
++        if not torch.isfinite(updated).all():
++            raise RuntimeError("CoEvoP&R timing policy produced non-finite net weights")
++        updated_cpu = updated.detach().cpu().numpy()
++        self.placedb.net_weights[:num_nets] = updated_cpu
++        if self.data_collections.net_weights is not None:
++            self.data_collections.net_weights[:num_nets].copy_(updated)
++        logging.info(
++            "CoEvoP&R timing policy %s"
++            % json.dumps(
++                {
++                    "iteration": int(iteration),
++                    "update_count": self._coevop_timing_update_count,
++                    "criticality_mean": self._coevop_scalar(net_observables["criticality"]),
++                    "multiplier_min": float(torch.min(multiplier).detach().cpu().item()),
++                    "multiplier_mean": self._coevop_scalar(multiplier),
++                    "multiplier_max": float(torch.max(multiplier).detach().cpu().item()),
++                    "weight_min": float(torch.min(updated).detach().cpu().item()),
++                    "weight_mean": self._coevop_scalar(updated),
++                    "weight_max": float(torch.max(updated).detach().cpu().item()),
++                },
++                sort_keys=True,
++            )
++        )
++
++    def _coevop_record_state_sample(self):
++        if not self.custom_state:
++            return
++        interval = max(self.custom_objective_log_interval, 1)
++        if self._coevop_obs_iteration % interval == 0 or not self.custom_state_trajectory:
++            sample = {"iteration": self._coevop_obs_iteration}
++            sample.update(
++                {name: self._coevop_scalar(value) for name, value in self.custom_state.items()}
++            )
++            sample["gamma"] = self._coevop_scalar(self.gamma)
++            sample["overflow"] = float(self._coevop_obs_overflow)
++            self.custom_state_trajectory.append(sample)
++            logging.info(
++                "CoEvoP&R state sample %s" % json.dumps(sample, sort_keys=True)
++            )
++
++    def _coevop_weighted_density(self):
++        if len(self.placedb.regions) > 0:
++            return self.density_weight.dot(self.density)
++        return self.density * (self.density_factor * self.density_weight).item()
++
++    def _coevop_electric_density(self):
++        return self.density
++
++    def _coevop_wirelength_wawl(self):
++        if self.global_place_params.get("wirelength") == "weighted_average":
++            return self.wirelength
++        return self._coevop_wirelength_wawl_op(self._coevop_current_pos)
++
++    def _coevop_wirelength_lse(self):
++        return self._coevop_wirelength_lse_op(self._coevop_current_pos)
++
++    def _coevop_pin_count_weighted_wl(self):
++        return self._coevop_pin_count_weighted_wl_op(self._coevop_current_pos)
++
++    def _coevop_density_bell(self):
++        return self._coevop_density_bell_op(self._coevop_current_pos)
++
++    def _coevop_normalize_term(self, name, value):
++        if value.numel() != 1:
++            value = value.sum()
++        if name not in self.custom_objective_term_scales:
++            scale = max(abs(float(value.detach().cpu().item())), 1.0)
++            if name in {"density", "density_electric", "density_bell"} and scale <= 1.0:
++                scale = max(abs(float(self.wirelength.detach().cpu().item())), 1.0)
++            self.custom_objective_term_scales[name] = scale
++            logging.info("CoEvoP&R custom objective term_scale %s=%.6E" % (name, scale))
++        normalized = value / self.custom_objective_term_scales[name]
++        self.custom_objective_last_terms[name] = {
++            "raw": self._coevop_scalar(value),
++            "normalized": self._coevop_scalar(normalized),
++        }
++        return normalized
++
++    def _coevop_output_scale(self):
++        wirelength_scale = max(abs(float(self.wirelength.detach().cpu().item())), 1.0)
++        if "native_objective" in self.custom_objective_term_scales:
++            return self.custom_objective_term_scales["native_objective"]
++        for wl_name in ("wirelength", "wirelength_wawl", "wirelength_lse", "pin_count_weighted_wl"):
++            if wl_name in self.custom_objective_term_scales:
++                return self.custom_objective_term_scales[wl_name]
++        return wirelength_scale
++
++    def _coevop_density_pnorm(self):
++        density = self._coevop_weighted_density()
++        if density.numel() == 1:
++            return torch.clamp(density, min=0.0)
++        return self._coevop_pnorm(torch.clamp(density.reshape(-1), min=0.0))
++
++    def _coevop_pin_positions(self):
++        pos = self._coevop_current_pos
++        if pos is None:
++            pos = self.data_collections.pos[0]
++        return self.op_collections.pin_pos_op(pos)
++
++    def _coevop_pnorm(self, values):
++        values = values.reshape(-1)
++        values = torch.clamp(values, min=0.0)
++        if values.numel() == 0:
++            return self.wirelength * 0.0
++        eps = values.new_tensor(1e-12)
++        return torch.pow(torch.mean(torch.pow(values + eps, self._COEVOP_PNORM)), 1.0 / self._COEVOP_PNORM)
++
++    def _coevop_soft_route_terms(self):
++        if self._coevop_soft_route_cache is not None:
++            return self._coevop_soft_route_cache
++        pin2net = self.data_collections.pin2net_map.long()
++        num_pins = int(pin2net.numel())
++        num_nets = int(self.placedb.num_nets)
++        if num_pins == 0 or num_nets == 0:
++            zero = self.wirelength * 0.0
++            self._coevop_soft_route_cache = {
++                "route": zero.reshape(1),
++                "pin": zero.reshape(1),
++                "route_long": zero.reshape(1),
++                "span": zero.reshape(1),
++            }
++            return self._coevop_soft_route_cache
++
++        pin_pos = self._coevop_pin_positions()
++        pin_x = pin_pos[:num_pins]
++        pin_y = pin_pos[num_pins:2 * num_pins]
++        finfo = torch.finfo(pin_x.dtype)
++        inf = finfo.max / 4.0
++        max_x = pin_x.new_full((num_nets,), -inf)
++        min_x = pin_x.new_full((num_nets,), inf)
++        max_y = pin_y.new_full((num_nets,), -inf)
++        min_y = pin_y.new_full((num_nets,), inf)
++        max_x.scatter_reduce_(0, pin2net, pin_x, reduce="amax", include_self=True)
++        min_x.scatter_reduce_(0, pin2net, pin_x, reduce="amin", include_self=True)
++        max_y.scatter_reduce_(0, pin2net, pin_y, reduce="amax", include_self=True)
++        min_y.scatter_reduce_(0, pin2net, pin_y, reduce="amin", include_self=True)
++
++        counts = pin_x.new_zeros((num_nets,))
++        counts.scatter_add_(0, pin2net, torch.ones_like(pin_x))
++        valid = counts > 1
++        if hasattr(self.data_collections, "net_mask_ignore_large_degrees"):
++            mask = self.data_collections.net_mask_ignore_large_degrees
++            if mask is not None and int(mask.numel()) == num_nets:
++                valid = valid & mask.bool()
++
++        eps_len = pin_x.new_tensor(max(min(float(self.bin_size_x), float(self.bin_size_y)) * 1e-3, 1e-6))
++        bin_area = pin_x.new_tensor(max(float(self.bin_size_x) * float(self.bin_size_y), 1.0))
++        span_x = torch.clamp(max_x - min_x, min=eps_len)
++        span_y = torch.clamp(max_y - min_y, min=eps_len)
++        net_span = span_x + span_y
++        bbox_area = span_x * span_y + bin_area
++        route_pressure = net_span / torch.sqrt(bbox_area)
++        if hasattr(self.data_collections, "net_weights"):
++            weights = self.data_collections.net_weights
++            if weights is not None and int(weights.numel()) == num_nets:
++                route_pressure = route_pressure * weights
++        pin_pressure = route_pressure * torch.sqrt(torch.clamp(counts, min=1.0))
++        zeros = torch.zeros_like(route_pressure)
++        route_pressure = torch.where(valid, route_pressure, zeros)
++        pin_pressure = torch.where(valid, pin_pressure, zeros)
++        net_span = torch.where(valid, net_span, zeros)
++        if self._coevop_long_route_threshold is None:
++            valid_span = net_span.detach()[valid]
++            if valid_span.numel() == 0:
++                threshold = float(max(float(self.bin_size_x) + float(self.bin_size_y), 1.0))
++            else:
++                threshold = float(torch.mean(valid_span).cpu().item()) * 2.0
++            threshold = max(threshold, 1e-6)
++            temperature = max(threshold * 0.25, 1e-6)
++            self._coevop_long_route_threshold = threshold
++            self._coevop_long_route_temperature = temperature
++            logging.info(
++                "CoEvoP&R route_pressure_long threshold=%.6E temperature=%.6E"
++                % (threshold, temperature)
++            )
++        threshold_t = pin_x.new_tensor(float(self._coevop_long_route_threshold))
++        temperature_t = pin_x.new_tensor(float(self._coevop_long_route_temperature))
++        long_gate = torch.sigmoid((net_span - threshold_t) / temperature_t)
++        route_long_pressure = long_gate * route_pressure
++        if torch.count_nonzero(valid).item() == 0:
++            route_pressure = route_pressure + self.wirelength * 0.0
++            pin_pressure = pin_pressure + self.wirelength * 0.0
++            route_long_pressure = route_long_pressure + self.wirelength * 0.0
++        self._coevop_soft_route_cache = {
++            "route": route_pressure,
++            "pin": pin_pressure,
++            "route_long": route_long_pressure,
++            "span": net_span,
++        }
++        return self._coevop_soft_route_cache
++
++    def _coevop_term_tensor(self, name):
++        """Raw differentiable tensor for a deployable term (no normalization)."""
++
++        if name == "native_objective":
++            if self._coevop_native_objective is None:
++                raise RuntimeError("CoEvoP&R native_objective requested before native objective was computed")
++            return self._coevop_native_objective
++        if name in ("wirelength", "wirelength_wawl"):
++            return self._coevop_wirelength_wawl()
++        if name == "wirelength_lse":
++            return self._coevop_wirelength_lse()
++        if name == "pin_count_weighted_wl":
++            return self._coevop_pin_count_weighted_wl()
++        if name == "timing_weighted_wirelength":
++            return self.wirelength
++        if name in ("density", "density_electric"):
++            return self._coevop_electric_density()
++        if name == "density_bell":
++            return self._coevop_density_bell()
++        if name == "soft_rudy_mean":
++            return torch.mean(self._coevop_soft_route_terms()["route"])
++        if name == "soft_rudy_pnorm":
++            return self._coevop_pnorm(self._coevop_soft_route_terms()["route"])
++        if name == "route_pressure_long":
++            return self._coevop_pnorm(self._coevop_soft_route_terms()["route_long"])
++        if name == "pin_density_pnorm":
++            return self._coevop_pnorm(self._coevop_soft_route_terms()["pin"])
++        raise ValueError("unsupported CoEvoP&R custom objective term %s" % name)
++
++    def _coevop_custom_term(self, name):
++        value = self._coevop_term_tensor(name)
++        if self.custom_objective_semantics == "raw":
++            if value.numel() != 1:
++                value = value.sum()
++            self.custom_objective_last_terms[name] = {
++                "raw": self._coevop_scalar(value),
++                "normalized": self._coevop_scalar(value),
++            }
++            return value
++        return self._coevop_normalize_term(name, value)
++
++    def _coevop_eval_custom_ast(self, node):
++        op = node["op"]
++        if op == "term":
++            return self._coevop_custom_term(node["name"])
++        if op == "state":
++            name = node["name"]
++            if name not in self.custom_state:
++                raise RuntimeError(
++                    "CoEvoP&R state register %s read before initialization" % name
++                )
++            return self._coevop_state_tensor(self.custom_state[name])
++        if op == "const":
++            return self.data_collections.pos[0].new_tensor(float(node["value"]))
++        args = [self._coevop_eval_custom_ast(child) for child in node["args"]]
++        if op == "add":
++            result = args[0]
++            for arg in args[1:]:
++                result = result + arg
++            return result
++        if op == "sub":
++            return args[0] - args[1]
++        if op == "mul":
++            result = args[0]
++            for arg in args[1:]:
++                result = result * arg
++            return result
++        if op == "safe_div":
++            eps = self.data_collections.pos[0].new_tensor(1e-6)
++            denom = torch.where(args[1] < 0, torch.minimum(args[1], -eps), torch.maximum(args[1], eps))
++            return args[0] / denom
++        if op == "log1p":
++            return torch.log1p(torch.clamp(args[0], min=-0.999999))
++        if op == "sqrt":
++            return torch.sqrt(torch.clamp(args[0], min=0.0))
++        if op == "square":
++            return args[0] * args[0]
++        if op == "softplus":
++            return F.softplus(args[0])
++        if op == "sigmoid":
++            return torch.sigmoid(args[0])
++        raise ValueError("unsupported CoEvoP&R custom objective op %s" % op)
++
++    def _coevop_scalar(self, value):
++        if isinstance(value, torch.Tensor):
++            return float(value.detach().mean().cpu().item())
++        return float(value)
++
++    def _coevop_eval_custom_components(self, result, output_scale):
++        evaluated = {}
++        components = self.custom_objective_spec.get("components", {})
++        for name, component_ast in components.items():
++            try:
++                value = self._coevop_eval_custom_ast(component_ast)
++                if value.numel() != 1:
++                    value = value.sum()
++                output_value = value * output_scale
++                payload = {
++                    "value": self._coevop_scalar(value),
++                    "output_value": self._coevop_scalar(output_value),
++                    "value_share": abs(self._coevop_scalar(output_value))
++                    / max(abs(self._coevop_scalar(result)), 1e-12),
++                }
++                component_grad = (
++                    torch.autograd.grad(
++                        output_value,
++                        self._coevop_current_pos,
++                        retain_graph=True,
++                        allow_unused=True,
++                    )[0]
++                    if output_value.requires_grad
++                    else None
++                )
++                payload["grad_norm"] = (
++                    0.0
++                    if component_grad is None
++                    else float(torch.norm(component_grad.detach()).cpu().item())
++                )
++                evaluated[name] = payload
++            except Exception as exc:
++                evaluated[name] = {
++                    "error": "%s: %s" % (type(exc).__name__, exc),
++                }
++        wl_grad_norm = float(evaluated.get("wirelength", {}).get("grad_norm", 0.0) or 0.0)
++        for payload in evaluated.values():
++            if "grad_norm" in payload:
++                payload["grad_ratio_to_wirelength"] = (
++                    wl_grad_norm / max(float(payload["grad_norm"]), 1e-12)
++                )
++        self.custom_objective_last_components = evaluated
++        return evaluated
++
++    def _coevop_log_custom_objective(self, result, output_scale):
++        self.custom_objective_call_count += 1
++        if self.custom_objective_call_count == 1 or (
++            self.custom_objective_log_interval > 0
++            and self.custom_objective_call_count % self.custom_objective_log_interval == 0
++        ):
++            components = self._coevop_eval_custom_components(result, output_scale)
++            logging.info(
++                "CoEvoP&R custom objective id=%s call=%d total=%.6E wirelength_raw=%.6E weighted_density_raw=%.6E"
++                % (
++                    self.custom_objective_spec["id"],
++                    self.custom_objective_call_count,
++                    self._coevop_scalar(result),
++                    self._coevop_scalar(self.wirelength),
++                    self._coevop_scalar(self._coevop_weighted_density()),
++                )
++            )
++            logging.info(
++                "CoEvoP&R custom objective output_scale=%.6E" % output_scale
++            )
++            logging.info(
++                "CoEvoP&R custom objective terms %s"
++                % json.dumps(self.custom_objective_last_terms, sort_keys=True)
++            )
++            logging.info(
++                "CoEvoP&R custom objective components %s"
++                % json.dumps(
++                    {
++                        "call": self.custom_objective_call_count,
++                        "components": components,
++                    },
++                    sort_keys=True,
++                )
++            )
++
++    def _coevop_native_identity_enabled(self):
++        if self.custom_objective_spec is None:
++            return False
++        state = self.custom_objective_spec.get("state", {})
++        return (
++            state.get("interface") == self._COEVOP_TYPED_POLICY_INTERFACE
++            and state.get("control") == "native_identity"
++        )
++
++    def _coevop_typed_wl_density_fastpath(self, ast):
++        state = self.custom_objective_spec.get("state", {})
++        if state.get("interface") != self._COEVOP_TYPED_POLICY_INTERFACE:
++            return None
++        expected = {
++            "op": "add",
++            "args": [
++                {"op": "term", "name": "wirelength_wawl"},
++                {
++                    "op": "mul",
++                    "args": [
++                        {"op": "state", "name": "density_weight"},
++                        {"op": "term", "name": "density_electric"},
++                    ],
++                },
++            ],
++        }
++        if ast != expected:
++            return None
++        # Match DREAMPlace's fused alpha kernel while sourcing alpha from the
++        # evolved policy slot rather than the hidden native schedule.
++        return torch.add(
++            self.wirelength,
++            self.density,
++            alpha=self._coevop_scalar(self.custom_state["density_weight"]),
++        )
++
+     def obj_fn(self, pos):
+         """
+         @brief Compute objective.
+@@ -317,6 +1457,42 @@ class PlaceObj(nn.Module):
+         else:
+             result = torch.add(self.wirelength, self.density, alpha=(self.density_factor * self.density_weight).item())
+ 
++        self._coevop_native_objective = result
++        if self.custom_objective_spec is not None:
++            object.__setattr__(self, "_coevop_current_pos", pos)
++            object.__setattr__(self, "_coevop_soft_route_cache", None)
++            if self._coevop_gamma0 is None:
++                try:
++                    self._coevop_gamma0 = float(self.gamma.detach().cpu().item())
++                except (RuntimeError, ValueError):
++                    self._coevop_gamma0 = None
++            if not self._coevop_state_initialized:
++                self._coevop_init_state()
++            custom_ast = self.custom_objective_spec["ast"]
++            if custom_ast == {"op": "term", "name": "native_objective"}:
++                # custom_default is the exact native execution-path control.
++                output_scale = 1.0
++                self.custom_objective_last_terms["native_objective"] = {
++                    "raw": self._coevop_scalar(result),
++                    "normalized": self._coevop_scalar(result),
++                }
++            else:
++                fast_result = self._coevop_typed_wl_density_fastpath(custom_ast)
++                result = (
++                    fast_result
++                    if fast_result is not None
++                    else self._coevop_eval_custom_ast(custom_ast)
++                )
++                if result.numel() != 1:
++                    result = result.sum()
++                if self.custom_objective_semantics == "raw":
++                    output_scale = 1.0
++                else:
++                    output_scale = self._coevop_output_scale()
++                    result = result * output_scale
++            if not torch.isfinite(result).all():
++                raise RuntimeError("CoEvoP&R custom objective produced a non-finite value")
++            self._coevop_log_custom_objective(result, output_scale)
+         return result
+ 
+     def obj_and_grad_fn_old(self, pos_w, pos_g=None, admm_multiplier=None):
+@@ -406,7 +1582,43 @@ class PlaceObj(nn.Module):
+         if obj.requires_grad:
+           obj.backward()
+ 
+-        self.op_collections.precondition_op(pos.grad, self.density_weight, self.update_mask, self.fix_nodes_mask)
++        if self.custom_objective_spec is not None:
++            if pos.grad is None:
++                raise RuntimeError("CoEvoP&R custom objective produced no gradient")
++            if not torch.isfinite(pos.grad).all():
++                raise RuntimeError("CoEvoP&R custom objective produced a non-finite gradient")
++            grad_norm = torch.norm(pos.grad.detach()).cpu().item()
++            if not np.isfinite(grad_norm) or grad_norm <= 0.0:
++                raise RuntimeError("CoEvoP&R custom objective produced a zero or non-finite gradient norm")
++            if self.custom_objective_call_count == 1 or (
++                self.custom_objective_log_interval > 0
++                and self.custom_objective_call_count % self.custom_objective_log_interval == 0
++            ):
++                logging.info(
++                    "CoEvoP&R custom objective grad_norm=%.6E"
++                    % grad_norm
++                )
++
++        precondition_density_weight = self.density_weight
++        if (
++            self.custom_objective_spec is not None
++            and "density_weight" in self.custom_state
++            and not self._coevop_native_identity_enabled()
++        ):
++            # Reserved register: condition gradients for the objective actually
++            # being optimized instead of the native schedule. The register holds
++            # the effective score coefficient (density_factor folded in).
++            density_factor = self.custom_state["density_weight"].new_tensor(
++                max(float(self.density_factor), 1e-12)
++            )
++            effective_density_weight = torch.clamp(
++                self.custom_state["density_weight"] / density_factor,
++                min=0.0,
++            )
++            precondition_density_weight = effective_density_weight.expand_as(
++                self.density_weight
++            )
++        self.op_collections.precondition_op(pos.grad, precondition_density_weight, self.update_mask, self.fix_nodes_mask)
+ 
+         return obj, pos.grad
+ 
+@@ -1148,6 +2360,3 @@ class PlaceObj(nn.Module):
+ 
+         self.op_collections.fence_region_density_overflow_merged_op = merged_density_overflow_op
+         return self.op_collections.fence_region_density_ops, self.op_collections.fence_region_density_merged_op, self.op_collections.fence_region_density_overflow_merged_op
+-
+-
+-
+diff --git a/dreamplace/ops/density_potential/density_potential.py b/dreamplace/ops/density_potential/density_potential.py
+index ae1d4c8..d29ee08 100644
+--- a/dreamplace/ops/density_potential/density_potential.py
++++ b/dreamplace/ops/density_potential/density_potential.py
+@@ -256,7 +256,7 @@ class DensityPotential(nn.Module):
+                 self.initial_density_map.div_(bin_area)
+                 # gaussian filter
+                 gaussian_weights = torch.tensor(gaussian_kernel(
+-                    self.sigma)).to(pos.device)
++                    self.sigma), dtype=pos.dtype, device=pos.device)
+                 self.initial_density_map = F.conv2d(
+                     self.initial_density_map.view(
+                         [1, 1, self.num_bins_x, self.num_bins_y]),
+@@ -265,10 +265,10 @@ class DensityPotential(nn.Module):
+                         gaussian_weights.size(0),
+                         gaussian_weights.size(1)
+                     ]),
+-                    padding=[
+-                        gaussian_weights.size(0) / 2,
+-                        gaussian_weights.size(1) / 2
+-                    ]).view([self.num_bins_x, self.num_bins_y])
++                    padding=(
++                        gaussian_weights.size(0) // 2,
++                        gaussian_weights.size(1) // 2
++                    )).view([self.num_bins_x, self.num_bins_y])
+                 ## level smoothing
+                 #self.initial_density_map.div_(self.initial_density_map.max())
+                 #density_mean = self.initial_density_map.mean()

@@ -1,0 +1,20 @@
+diff --git a/dreamplace/ops/timing/src/timing_cpp.cpp b/dreamplace/ops/timing/src/timing_cpp.cpp
+--- a/dreamplace/ops/timing/src/timing_cpp.cpp
++++ b/dreamplace/ops/timing/src/timing_cpp.cpp
+@@ -304,6 +304,16 @@ int timingCppLauncher(
+     }
+     auto& net = net_iter->second;
+     const int degree = netpin_start[i + 1] - netpin_start[i];
++
++    // FLUTE is neither useful nor robust for clock/reset nets with thousands
++    // of pins. DREAMPlace already defines ignore_net_degree to treat these
++    // nets as zero-wire-delay nets, but the upstream implementation invokes
++    // FLUTE before applying that policy. Skip them before tree construction so
++    // large mixed-size designs cannot overflow or crash FLUTE.
++    if (ignore_net_degree > 0 && degree > ignore_net_degree) {
++      ++coevop_skipped_nets;
++      continue;
++    }
+
+     // Validate all real pins before mutating the RC tree. If any pin cannot
+     // be resolved in the timer, skip this net as incomplete timing collateral.

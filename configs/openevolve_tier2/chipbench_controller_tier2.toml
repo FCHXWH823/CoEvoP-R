@@ -1,0 +1,94 @@
+# Primary CoEvoP&R evolution configuration for ChiPBench Nangate45.
+
+provider = "openai"
+term_scope = "dreamplace_controller"
+objective_mode = "controller"
+mutation_mode = "diff"
+minimum_scoring_iterations = 1000
+allow_short_search_for_tests = false
+
+max_iterations = 160
+samples_per_iteration = 3
+population_size = 100
+archive_size = 20
+num_islands = 5
+map_elites_enabled = true
+feature_bins = 8
+feature_dimensions = ["complexity", "mechanism_family", "hpwl_delta_bucket", "overflow_delta_bucket", "opentimer_wns_delta_bucket"]
+migration_interval = 20
+migration_rate = 0.10
+migration_topology = "ring"
+checkpoint_interval = 10
+num_top_programs = 3
+num_diverse_programs = 2
+seed = 42
+
+evaluate_initial_presets = true
+primary_baseline = "default"
+parent_policy = "pareto_multiobjective"
+selection_policy = "pareto_multiobjective"
+structured_feedback = true
+router_background = "../../prompts/router_objective_background.md"
+
+min_state_registers = 1
+require_nonzero_routing_term = false
+max_calibrated_siblings = 0
+max_generation_attempts = 4
+full_rewrite_after_static_rejections = 2
+escape_parent_after_static_rejections = 2
+reject_baseline_mechanism_clones = true
+min_baseline_mechanism_distance = 0.35
+reject_repeated_negative_mechanisms = true
+min_negative_mechanism_distance = 0.25
+
+initial_presets = [
+  "dreamplace_controller_native_identity",
+  "dreamplace_controller_eplace_smooth",
+]
+
+[timing_proxy]
+enabled = true
+mode = "gate"
+panel = "../timing_panels/chipbench_proxy_audit.toml"
+audit_required = true
+max_hpwl_corr_for_gate = 0.70
+max_hpwl_corr_for_tiebreaker = 0.95
+wns_delta_min_abs_ns = 0.00002
+wns_regression_gate_ns = 0.0002
+tns_regression_pct_gate = 10.0
+tns_regression_min_abs_ns = 0.00025
+selection_weight = 0.0
+
+[timing_controller]
+min_net_coverage = 0.95
+
+[search]
+panel = "../shared_panels/chipbench_controller_search.toml"
+disable_legalization = true
+baseline_presets = [
+  "dreamplace_controller_native_identity",
+  "dreamplace_controller_eplace_smooth",
+]
+
+[final]
+enabled = true
+panel = "../shared_panels/chipbench_controller_final.toml"
+disable_legalization = false
+top_k = 8
+baseline_presets = [
+  "dreamplace_controller_native_identity",
+  "dreamplace_controller_eplace_smooth",
+]
+
+[tier3]
+enabled = true
+panel = "../shared_panels/chipbench_table1_post_route.toml"
+top_k = 3
+interval = 20
+start_iteration = 20
+baseline_objective_id = "default"
+candidate_policy = "elite_or_aggregate"
+baseline_presets = [
+  "dreamplace_controller_native_identity",
+  "dreamplace_controller_eplace_smooth",
+]

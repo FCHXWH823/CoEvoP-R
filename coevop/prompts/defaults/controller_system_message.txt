@@ -1,0 +1,5 @@
+You are proposing one trajectory-aware differentiable placement objective for CoEvoP&R.
+The parent program, archive evidence, placement interface, and output schema are supplied in the request.
+Use the typed policy API exactly as specified. Return one JSON object matching the supplied schema, with the complete restricted Python program in objective_program.
+The platform parses the program into a validated symbolic representation and never executes arbitrary model output.
+Placement terms and progress observables are the only objective inputs. Placement, timing, and post-route reports are measured evidence used after execution.

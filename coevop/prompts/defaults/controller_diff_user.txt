@@ -1,0 +1,32 @@
+# Parent Objective and Archive Evidence
+- Fitness: {fitness_score}
+- Feature coordinates: {feature_coords}
+- Search focus: {improvement_areas}
+
+# Objective Interface
+{task_environment}
+
+{artifacts}
+
+# Archive History
+{evolution_history}
+
+# Parent Objective
+```{language}
+{current_program}
+```
+
+# Proposal Task
+Propose a targeted mechanism-level update to the parent objective. Preserve the typed trajectory-aware API shown in the interface and return the complete objective_program.
+
+The proposal may change physical terms, smooth transformations, policy initialization, or policy schedules. Use measured archive evidence to guide the proposal while keeping downstream reports outside the objective inputs.
+
+Record the edit in change_description with exact SEARCH/REPLACE blocks.
+
+<<<<<<< SEARCH
+# Exact parent code
+=======
+# Updated code
+>>>>>>> REPLACE
+
+Return a physically interpretable candidate whose placement behavior can be evaluated by the configured evidence flow.
