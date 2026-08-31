@@ -4,8 +4,6 @@ This repository contains the source code and configurations for CoEvoP&R. It evo
 
 [![Overview of the CoEvoP&R framework](Figures/Figure1.png)](Figures/Figure1.pdf)
 
-*Overview of the CoEvoP&R framework. Click the figure to open the source PDF.*
-
 ## Artifact contents
 
 - `coevop/objectives` implements the restricted `typed_policy_v1` objective interface.
