@@ -2,6 +2,10 @@
 
 This repository contains the source code and configurations for CoEvoP&R. It evolves readable differentiable placement objectives, embeds validated candidates in DREAMPlace, evaluates placement-stage timing evidence, and schedules selected placements for post-route evaluation with ChiPBench and OpenROAD.
 
+[![Overview of the CoEvoP&R framework](Figures/Figure1.png)](Figures/Figure1.pdf)
+
+*Overview of the CoEvoP&R framework. Click the figure to open the source PDF.*
+
 ## Artifact contents
 
 - `coevop/objectives` implements the restricted `typed_policy_v1` objective interface.
@@ -257,3 +261,20 @@ python3 -m coevop.cli asap7-transfer \
 ## Output provenance
 
 Each run stores the resolved configuration, objective program, prompt and response records, candidate metrics, component and state traces, placement artifacts, routed metrics, and failure records under its run directory. These files are sufficient to reconstruct candidate lineage and the evidence used by the archive.
+
+## Citation
+
+If you use CoEvoP&R in your research, please cite the [arXiv paper](https://arxiv.org/abs/2607.17398):
+
+```bibtex
+@misc{chen2026coevop,
+  title         = {CoEvoP\&R: Co-Evolving Placement Objectives with Routing Feedback via Large Language Models},
+  author        = {Ruogu Chen and Weihua Xiao and Ramesh Karri and Jie Han},
+  year          = {2026},
+  eprint        = {2607.17398},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  doi           = {10.48550/arXiv.2607.17398},
+  url           = {https://arxiv.org/abs/2607.17398}
+}
+```
