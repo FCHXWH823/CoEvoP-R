@@ -28,6 +28,9 @@ dev = [
 baselines = [
   "optuna>=4.0"
 ]
+anthropic = [
+  "anthropic>=1.0"
+]
 
 [tool.setuptools.packages.find]
 include = ["coevop*"]

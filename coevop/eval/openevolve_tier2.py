@@ -27,14 +27,21 @@ from coevop.eval.shared_panel import load_shared_panel, write_dreamplace_panel
 from coevop.eval.tier3_openroad import run_tier3_openroad
 from coevop.eval.tier2_dreamplace import load_panel, run_tier2_dreamplace
 from coevop.eval.timing_proxy import (
+    apply_timing_proxy_admission,
     apply_timing_proxy_policy,
+    cap_unstable_timing_proxy_admission,
+    default_timing_proxy_admission,
     load_timing_proxy_panel,
     placements_from_tier2_comparison,
+    run_timing_proxy_audit,
     run_timing_proxy_eval,
+    summarize_timing_proxy_admission,
+    timing_proxy_downstream_agreement,
     timing_proxy_metrics_by_objective,
 )
 from coevop.backends.dreamplace import make_run_config, run_dreamplace, write_run_summary
 from coevop.evolution.openevolve_core import (
+    ROUTED_EVIDENCE_KEYS,
     ObjectiveDatabaseConfig,
     ObjectiveEvolutionTrace,
     ObjectiveProgram,
@@ -130,6 +137,7 @@ class OpenEvolveTier2Config:
     migration_interval: int
     migration_rate: float
     migration_topology: str
+    migration_clock: str
     checkpoint_interval: int
     num_top_programs: int
     num_diverse_programs: int
@@ -251,7 +259,14 @@ class OpenEvolveTier2Config:
     timing_proxy_tns_regression_pct_gate: float
     timing_proxy_tns_regression_min_abs_ns: float
     timing_proxy_selection_weight: float
+    # Generations between in-loop timing-proxy audits; 0 keeps the configured
+    # mode as the admission for every design and metric.
+    timing_proxy_audit_interval: int
+    timing_proxy_audit_perturbations: int
+    timing_proxy_audit_min_pairs: int
     timing_controller_min_net_coverage: float
+    # Timing collateral for candidates that define update_net_weights.
+    timing_controller_panel: str | None
     design_profile_enabled: bool
     design_profile_include_file_stats: bool
     prior_feedback: str | None
@@ -334,6 +349,7 @@ def load_openevolve_tier2_config(path: str | Path) -> OpenEvolveTier2Config:
         migration_interval=int(payload.get("migration_interval", 20)),
         migration_rate=float(payload.get("migration_rate", 0.10)),
         migration_topology=str(payload.get("migration_topology", "ring")),
+        migration_clock=str(payload.get("migration_clock", "generation")),
         checkpoint_interval=int(payload.get("checkpoint_interval", 10)),
         num_top_programs=int(payload.get("num_top_programs", 3)),
         num_diverse_programs=int(payload.get("num_diverse_programs", 2)),
@@ -772,7 +788,39 @@ def load_openevolve_tier2_config(path: str | Path) -> OpenEvolveTier2Config:
                 payload.get("timing_proxy_selection_weight", 0.05),
             )
         ),
+        timing_proxy_audit_interval=int(
+            timing_proxy.get(
+                "audit_interval",
+                payload.get("timing_proxy_audit_interval", 0),
+            )
+        ),
+        timing_proxy_audit_perturbations=int(
+            timing_proxy.get(
+                "audit_perturbations",
+                payload.get("timing_proxy_audit_perturbations", 5),
+            )
+        ),
+        timing_proxy_audit_min_pairs=int(
+            timing_proxy.get(
+                "audit_min_pairs",
+                payload.get("timing_proxy_audit_min_pairs", 3),
+            )
+        ),
         timing_controller_min_net_coverage=timing_controller_min_net_coverage,
+        timing_controller_panel=(
+            str(
+                _resolve_config_path(
+                    config_path,
+                    str(
+                        timing_controller.get(
+                            "panel", payload.get("timing_controller_panel")
+                        )
+                    ),
+                )
+            )
+            if timing_controller.get("panel", payload.get("timing_controller_panel"))
+            else None
+        ),
         design_profile_enabled=bool(
             design_profile.get("enabled", payload.get("design_profile_enabled", True))
         ),
@@ -901,6 +949,7 @@ def _prompt_policy_from_config(
         },
         "timing_controller": {
             "min_net_coverage": config.timing_controller_min_net_coverage,
+            "available": not _timing_controller_uncovered_designs(config),
             "role": (
                 "Per-net timing policies are admitted only when DREAMPlace/OpenTimer "
                 "reports finite timing and sufficient matched-net coverage."
@@ -1025,6 +1074,39 @@ def _target_design_context(config: OpenEvolveTier2Config) -> dict[str, Any]:
             else "No separate held-out generalization panel is configured."
         ),
     }
+
+
+def _timing_controller_uncovered_designs(config: OpenEvolveTier2Config) -> list[str]:
+    """Search-panel designs on which update_net_weights cannot run.
+
+    A design is covered when the timing-controller panel supplies its timing
+    collateral or its DREAMPlace base config is already timing-driven.
+    """
+
+    covered: set[str] = set()
+    if config.timing_controller_panel:
+        try:
+            covered = {
+                design.name
+                for design in load_timing_proxy_panel(config.timing_controller_panel).designs
+            }
+        except (OSError, ValueError):
+            covered = set()
+    uncovered = []
+    try:
+        designs = load_shared_panel(config.search_panel).designs
+    except Exception:
+        return []
+    for design in designs:
+        if design.name in covered:
+            continue
+        try:
+            base = json.loads(Path(design.dreamplace_config).read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            base = {}
+        if not (base.get("timing_opt_flag") and base.get("enable_net_weighting")):
+            uncovered.append(design.name)
+    return uncovered
 
 
 def _panel_design_names(panel_path: str | Path | None) -> list[str]:
@@ -2044,12 +2126,15 @@ def run_openevolve_tier2(
             migration_interval=config.migration_interval,
             migration_rate=config.migration_rate,
             migration_topology=config.migration_topology,
+            migration_clock=config.migration_clock,
         ),
     )
+    timing_admission = _load_timing_admission(config, run_root)
     if resume:
         database.load()
         if not database.is_empty:
             _refresh_database_scores(database, config)
+            _refresh_pareto_selection(database, config, timing_admission)
             database.save(iteration=database.last_iteration)
     if database.is_empty:
         _seed_initial_programs(
@@ -2060,8 +2145,22 @@ def run_openevolve_tier2(
             resume=resume,
             retry_failed=retry_failed,
         )
-        _refresh_pareto_selection(database, config)
+        _refresh_pareto_selection(database, config, timing_admission)
         database.save(iteration=0)
+    if not _timing_admission_path(run_root).is_file():
+        # Audit the timing proxy on the seed placements before it can
+        # influence the first generation.
+        initial_audit = _run_scheduled_timing_proxy_audit(
+            config=config,
+            database=database,
+            iteration=0,
+            run_root=run_root,
+            dreamplace_root=dreamplace_root,
+        )
+        if initial_audit is not None:
+            timing_admission = initial_audit
+            _refresh_pareto_selection(database, config, timing_admission)
+            database.save(iteration=database.last_iteration)
     if not any(program.is_parent_eligible for program in database.programs.values()):
         promoted = _promote_bootstrap_seed_parent(database)
         if promoted is not None:
@@ -2128,7 +2227,7 @@ def run_openevolve_tier2(
         )
         for program in programs:
             database.add(program, target_island=parent.island)
-        _refresh_pareto_selection(database, config)
+        _refresh_pareto_selection(database, config, timing_admission)
         scheduled_tier3 = _run_scheduled_tier3_feedback(
             config=config,
             database=database,
@@ -2139,10 +2238,22 @@ def run_openevolve_tier2(
             resume=resume,
             retry_failed=retry_failed,
         )
-        if scheduled_tier3 is not None:
-            _refresh_pareto_selection(database, config)
+        scheduled_audit = _run_scheduled_timing_proxy_audit(
+            config=config,
+            database=database,
+            iteration=iteration,
+            run_root=run_root,
+            dreamplace_root=dreamplace_root,
+        )
+        if scheduled_audit is not None:
+            timing_admission = scheduled_audit
+        if scheduled_tier3 is not None or scheduled_audit is not None:
+            _refresh_pareto_selection(database, config, timing_admission)
         database.increment_island_generation(active_island)
         migrants = database.maybe_migrate(iteration=iteration, rng=rng)
+        if migrants:
+            # Algorithm 1: the archive is Pareto-refreshed after migration.
+            _refresh_pareto_selection(database, config, timing_admission)
         database.save(iteration=iteration)
         for program in programs:
             trace.append(iteration=iteration, parent=parent, child=program)
@@ -2169,6 +2280,14 @@ def run_openevolve_tier2(
             "best_child_id": primary_program.id,
             "migration_count": len(migrants),
             "scheduled_tier3": scheduled_tier3,
+            "scheduled_timing_audit": (
+                {
+                    "authority": scheduled_audit.get("authority"),
+                    "counts": scheduled_audit.get("counts"),
+                }
+                if scheduled_audit is not None
+                else None
+            ),
             "failed_reasons": [
                 program.failure_reason
                 for program in programs
@@ -2548,6 +2667,7 @@ def build_openevolve_prompt_dry_run(
             migration_interval=config.migration_interval,
             migration_rate=config.migration_rate,
             migration_topology=config.migration_topology,
+            migration_clock=config.migration_clock,
         ),
     )
 
@@ -2684,8 +2804,85 @@ def _load_iteration_feedback(
     if run_root is not None:
         run_feedback = Path(run_root) / "routed_feedback.json"
         if run_feedback.exists():
-            return _load_json(str(run_feedback))
+            return _routed_feedback_prompt_view(_load_json(str(run_feedback)))
     return None
+
+
+ROUTED_FEEDBACK_PROMPT_CANDIDATES = 24
+ROUTED_FEEDBACK_PROMPT_DESIGN_ROWS = 24
+
+
+def _routed_values_text(values: dict[str, Any]) -> str:
+    labels = dict(zip(ROUTED_EVIDENCE_KEYS, ("rWL", "rOvf", "WNS", "TNS")))
+    parts = []
+    for key, label in labels.items():
+        value = _finite_number(values.get(key))
+        parts.append(f"{label}={value:+.4g}" if value is not None else f"{label}=n/a")
+    return " ".join(parts)
+
+
+def _routed_feedback_prompt_view(payload: Any) -> Any:
+    """Condense the cumulative routed record into prompt-sized evidence.
+
+    Every routed candidate from every round stays visible with its aggregate
+    post-route evidence; per-design detail is kept for the latest round.
+    """
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("rounds"), list):
+        return payload
+    rounds = sorted(
+        (item for item in payload["rounds"] if isinstance(item, dict)),
+        key=lambda item: int(item.get("iteration") or 0),
+        reverse=True,
+    )
+    if not rounds:
+        return payload
+    candidates = [
+        f"generation={round_record.get('iteration')} program={item.get('program_id')} "
+        + _routed_values_text(item)
+        for round_record in rounds
+        for item in round_record.get("evidence", [])
+        if isinstance(item, dict)
+    ]
+    per_design = []
+    for item in rounds[0].get("evidence", []):
+        by_design: dict[str, list[dict[str, Any]]] = {}
+        for row in item.get("per_design_routed_evidence") or []:
+            if isinstance(row, dict):
+                by_design.setdefault(str(row.get("design")), []).append(row)
+        for design, rows in sorted(by_design.items()):
+            per_design.append(
+                f"program={item.get('program_id')} design={design} "
+                + _routed_values_text(
+                    {
+                        "routed_wirelength_delta_pct": _mean_finite(
+                            row.get("routed_wirelength_delta_pct") for row in rows
+                        ),
+                        "routed_overflow_delta_pct": _mean_finite(
+                            row.get("grt_overflow_delta_pct") for row in rows
+                        ),
+                        "post_route_wns_gain_ns": _mean_finite(
+                            row.get("wns_gain_ns") for row in rows
+                        ),
+                        "post_route_tns_gain_ns": _mean_finite(
+                            row.get("tns_gain_ns") for row in rows
+                        ),
+                    }
+                )
+            )
+    return {
+        "stage": "scheduled_routed_evaluation",
+        "note": (
+            "Post-route evidence of every candidate routed so far, newest first. "
+            "rWL and rOvf are routed wirelength and routing overflow changes in "
+            "percent (negative is better); WNS and TNS are post-route gains in "
+            "ns (positive is better). All values are relative to DREAMPlace."
+        ),
+        "latest_generation": rounds[0].get("iteration"),
+        "routed_round_count": len(rounds),
+        "routed_candidates": candidates[:ROUTED_FEEDBACK_PROMPT_CANDIDATES],
+        "latest_round_per_design": per_design[:ROUTED_FEEDBACK_PROMPT_DESIGN_ROWS],
+    }
 
 
 def _generate_and_evaluate_children(
@@ -2966,6 +3163,13 @@ def _timing_proxy_feedback_for_tier2_summary(
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     if not config.timing_proxy_enabled:
         return {}, {}
+    if not objective_ids:
+        return {}, {
+            "timing_proxy": {
+                "status": "not_run",
+                "reason": "No candidate was selected for Tier B after Tier A evaluation.",
+            }
+        }
     if not config.timing_proxy_panel:
         if config.timing_proxy_audit_required:
             raise RuntimeError(
@@ -3057,6 +3261,31 @@ def _timing_proxy_feedback_for_tier2_summary(
         }
 
 
+def _tier_b_selected(metrics: dict[str, Any], config: OpenEvolveTier2Config) -> bool:
+    """Whether a validated candidate receives the Tier B timing proxy.
+
+    Tier B is reserved for candidates whose Tier A placement is usable
+    evidence: it completed the iteration budget without a structural failure
+    and produced finite HPWL and overflow.
+    """
+
+    return bool(
+        config.timing_proxy_enabled
+        and not metrics.get("structural_failure_count")
+        and metrics.get("iteration_budget_satisfied")
+        and _finite_number(metrics.get("hpwl_delta_pct")) is not None
+        and _finite_number(metrics.get("overflow_delta_pct")) is not None
+    )
+
+
+def _record_tier_b_evidence(metrics: dict[str, Any], *, selected: bool) -> None:
+    metrics["tier_b_selected"] = selected
+    metrics["tier_b_evaluated"] = str(metrics.get("timing_proxy_status")) in {
+        "success",
+        "partial",
+    }
+
+
 def _placement_count(path: str | Path) -> int:
     try:
         payload = json.loads(Path(path).read_text(encoding="utf-8-sig"))
@@ -3098,6 +3327,7 @@ def _evaluate_search_panel(
             objective_semantics=(
                 "raw" if config.objective_mode == "controller" else None
             ),
+            timing_controller_panel=config.timing_controller_panel,
         )
     except Exception as exc:
         return (
@@ -3148,16 +3378,18 @@ def _evaluate_search_panel(
     metrics.update(
         _baseline_mechanism_summary_from_presets(_spec_mechanism_view(spec), config)
     )
+    tier_b_selected = _tier_b_selected(metrics, config)
     timing_metrics, timing_artifacts = _timing_proxy_feedback_for_tier2_summary(
         tier2_summary=tier2_summary,
         config=config,
         iteration_dir=iteration_dir,
         dreamplace_root=dreamplace_root,
-        objective_ids={spec.id},
+        objective_ids={spec.id} if tier_b_selected else set(),
         resume=resume,
         retry_failed=retry_failed,
     )
     metrics.update(timing_metrics.get(spec.id, {}))
+    _record_tier_b_evidence(metrics, selected=tier_b_selected)
     _apply_timing_controller_admission(metrics, spec, config)
     _apply_final_def_selection_metrics(metrics, config)
     _apply_routing_gate(metrics, spec, config, allow_nonrouting_parent=False)
@@ -3227,6 +3459,7 @@ def _evaluate_search_panel_many(
             objective_semantics=(
                 "raw" if config.objective_mode == "controller" else None
             ),
+            timing_controller_panel=config.timing_controller_panel,
         )
     except Exception as exc:
         failure_metrics = {
@@ -3265,19 +3498,32 @@ def _evaluate_search_panel_many(
         baseline_paths=baseline_paths,
         baseline_preset_names=config.search_baseline_presets,
     )
+    tier_a_metrics = {
+        spec.id: _metrics_from_rows(
+            [row for row in rows if row.get("objective_id") == spec.id],
+            ranking_by_id.get(spec.id),
+            config,
+        )
+        for spec in specs
+    }
+    tier_b_ids = {
+        spec_id
+        for spec_id, spec_metrics in tier_a_metrics.items()
+        if _tier_b_selected(spec_metrics, config)
+    }
     timing_metrics, timing_artifacts = _timing_proxy_feedback_for_tier2_summary(
         tier2_summary=tier2_summary,
         config=config,
         iteration_dir=iteration_dir,
         dreamplace_root=dreamplace_root,
-        objective_ids={spec.id for spec in specs},
+        objective_ids=tier_b_ids,
         resume=resume,
         retry_failed=retry_failed,
     )
     results: dict[str, tuple[dict[str, Any], dict[str, Any], str, str | None]] = {}
     for spec in specs:
         candidate_rows = [row for row in rows if row.get("objective_id") == spec.id]
-        metrics = _metrics_from_rows(candidate_rows, ranking_by_id.get(spec.id), config)
+        metrics = tier_a_metrics[spec.id]
         metrics.update(
                 _baseline_portfolio_summary(
                     rows=rows,
@@ -3294,6 +3540,7 @@ def _evaluate_search_panel_many(
         _baseline_mechanism_summary_from_presets(_spec_mechanism_view(spec), config)
     )
         metrics.update(timing_metrics.get(spec.id, {}))
+        _record_tier_b_evidence(metrics, selected=spec.id in tier_b_ids)
         _apply_timing_controller_admission(metrics, spec, config)
         _apply_final_def_selection_metrics(metrics, config)
         _apply_routing_gate(metrics, spec, config, allow_nonrouting_parent=False)
@@ -3901,6 +4148,8 @@ def _metrics_from_rows(
     grad_norm = _mean_finite(row.get("custom_grad_norm") for row in rows)
     in_loop_wns_delta = _mean_finite(row.get("wns_delta") for row in rows)
     in_loop_tns_delta = _mean_finite(row.get("tns_delta") for row in rows)
+    in_loop_wns = _mean_finite(row.get("wns") for row in rows)
+    in_loop_tns = _mean_finite(row.get("tns") for row in rows)
     in_loop_timing_net_coverage = _mean_finite(
         row.get("timing_net_coverage") for row in rows
     )
@@ -4029,6 +4278,8 @@ def _metrics_from_rows(
         "custom_grad_norm": grad_norm,
         "in_loop_wns_delta": in_loop_wns_delta,
         "in_loop_tns_delta": in_loop_tns_delta,
+        "in_loop_wns": in_loop_wns,
+        "in_loop_tns": in_loop_tns,
         "in_loop_timing_net_coverage": in_loop_timing_net_coverage,
         "in_loop_timing_policy_updates": in_loop_timing_policy_updates,
         "component_summary": component_summary,
@@ -5014,7 +5265,12 @@ def _apply_timing_controller_admission(
         and coverage >= config.timing_controller_min_net_coverage
     )
     updates_ok = updates is not None and updates >= 1.0
-    metrics_ok = wns_delta is not None and tns_delta is not None
+    # The matched native placement is not timing-driven and reports no in-loop
+    # WNS/TNS to difference against, so finite in-loop values are sufficient.
+    metrics_ok = (wns_delta is not None and tns_delta is not None) or (
+        _finite_number(metrics.get("in_loop_wns")) is not None
+        and _finite_number(metrics.get("in_loop_tns")) is not None
+    )
     budget_ok = bool(metrics.get("iteration_budget_satisfied"))
     admitted = coverage_ok and updates_ok and metrics_ok and budget_ok
 
@@ -5083,6 +5339,7 @@ def _apply_timing_controller_admission(
 def _refresh_pareto_selection(
     database: ObjectiveProgramDatabase,
     config: OpenEvolveTier2Config,
+    timing_admission: dict[str, Any] | None = None,
 ) -> None:
     if config.selection_policy != "pareto_multiobjective":
         return
@@ -5097,8 +5354,14 @@ def _refresh_pareto_selection(
         database.rebuild_indexes()
         return
 
-    vectors = {program.id: _pareto_vector(program.metrics) for program in candidates}
-    fronts = _nondominated_fronts(candidates, vectors)
+    if timing_admission is None:
+        timing_admission = default_timing_proxy_admission(
+            getattr(config, "timing_proxy_mode", "diagnostic")
+        )
+    for program in candidates:
+        apply_timing_proxy_admission(program.metrics, timing_admission)
+    evidence = {program.id: _pareto_evidence(program.metrics) for program in candidates}
+    fronts = _nondominated_fronts(candidates, evidence)
     equal_design_ranks = _equal_design_ranks(candidates)
     front_count = len(fronts)
     for front_index, front in enumerate(fronts):
@@ -5143,42 +5406,74 @@ def _refresh_pareto_selection(
     database.rebuild_indexes()
 
 
-def _pareto_vector(metrics: dict[str, Any]) -> tuple[float | None, ...]:
-    hpwl = _finite_number(metrics.get("hpwl_delta_pct"))
-    routed_wirelength = _finite_number(
-        metrics.get("routed_wirelength_delta_pct")
-    )
-    overflow = _finite_number(metrics.get("routed_overflow_delta_pct"))
-    if overflow is None:
-        overflow = _finite_number(metrics.get("overflow_delta_pct"))
-    wns = _finite_number(metrics.get("post_route_wns_gain_ns"))
-    if wns is None:
-        wns = _finite_number(metrics.get("timing_proxy_wns_delta"))
-    tns = _finite_number(metrics.get("post_route_tns_gain_ns"))
-    if tns is None:
-        tns = _finite_number(metrics.get("timing_proxy_tns_delta"))
-    # Fixed metric positions prevent a WNS-only result from being compared to
-    # a TNS-only result as though they represented the same objective. Missing
-    # timing is not fabricated; timing-controller admission is controlled
-    # separately by collateral coverage and update execution.
-    return (
-        hpwl,
-        routed_wirelength,
-        overflow,
-        -wns if wns is not None else None,
-        -tns if tns is not None else None,
-    )
+# The four coordinates of the Pareto evidence order, each lower-is-better.
+PARETO_COORDINATES = ("wirelength", "overflow", "wns", "tns")
+# Evidence tiers from most to least faithful: routed, timing proxy, placement.
+PARETO_TIER_PRECEDENCE = ("C", "B", "A")
+
+
+def _pareto_evidence(metrics: dict[str, Any]) -> dict[str, dict[str, float]]:
+    """Measured evidence for each Pareto coordinate, keyed by evidence tier.
+
+    Wirelength and overflow come from the Tier A placement (HPWL, density
+    overflow) and, once the candidate is routed, from Tier C (routed
+    wirelength, routing overflow). WNS and TNS come from the admitted Tier B
+    timing proxy and from Tier C post-route timing. Timing signs are flipped so
+    that slack gains align with wirelength and overflow reductions.
+    """
+
+    def proxy(metric: str) -> float | None:
+        admitted_key = f"timing_evidence_{metric}_delta"
+        if admitted_key in metrics:
+            return _finite_number(metrics.get(admitted_key))
+        return _finite_number(metrics.get(f"timing_proxy_{metric}_delta"))
+
+    def negated(value: float | None) -> float | None:
+        return -value if value is not None else None
+
+    tiers = {
+        "wirelength": {
+            "A": _finite_number(metrics.get("hpwl_delta_pct")),
+            "C": _finite_number(metrics.get("routed_wirelength_delta_pct")),
+        },
+        "overflow": {
+            "A": _finite_number(metrics.get("overflow_delta_pct")),
+            "C": _finite_number(metrics.get("routed_overflow_delta_pct")),
+        },
+        "wns": {
+            "B": negated(proxy("wns")),
+            "C": negated(_finite_number(metrics.get("post_route_wns_gain_ns"))),
+        },
+        "tns": {
+            "B": negated(proxy("tns")),
+            "C": negated(_finite_number(metrics.get("post_route_tns_gain_ns"))),
+        },
+    }
+    return {
+        coordinate: {tier: value for tier, value in values.items() if value is not None}
+        for coordinate, values in tiers.items()
+    }
 
 
 def _dominates(
-    left: tuple[float | None, ...],
-    right: tuple[float | None, ...],
+    left: dict[str, dict[str, float]],
+    right: dict[str, dict[str, float]],
 ) -> bool:
-    comparable = [
-        (left_value, right_value)
-        for left_value, right_value in zip(left, right)
-        if left_value is not None and right_value is not None
-    ]
+    """Pareto dominance over the coordinates measured for both candidates.
+
+    A coordinate is compared at the most faithful tier both candidates
+    received, so a routed measurement is never compared against a
+    placement-stage one. Coordinates without a common tier are left out.
+    """
+
+    comparable = []
+    for coordinate in PARETO_COORDINATES:
+        left_tiers = left.get(coordinate, {})
+        right_tiers = right.get(coordinate, {})
+        for tier in PARETO_TIER_PRECEDENCE:
+            if tier in left_tiers and tier in right_tiers:
+                comparable.append((left_tiers[tier], right_tiers[tier]))
+                break
     if not comparable:
         return False
     return all(left_value <= right_value for left_value, right_value in comparable) and any(
@@ -5188,7 +5483,7 @@ def _dominates(
 
 def _nondominated_fronts(
     programs: list[ObjectiveProgram],
-    vectors: dict[str, tuple[float | None, ...]],
+    evidence: dict[str, dict[str, dict[str, float]]],
 ) -> list[list[ObjectiveProgram]]:
     remaining = list(programs)
     fronts: list[list[ObjectiveProgram]] = []
@@ -5198,7 +5493,7 @@ def _nondominated_fronts(
             for candidate in remaining
             if not any(
                 other.id != candidate.id
-                and _dominates(vectors[other.id], vectors[candidate.id])
+                and _dominates(evidence[other.id], evidence[candidate.id])
                 for other in remaining
             )
         ]
@@ -5222,10 +5517,16 @@ def _equal_design_ranks(programs: list[ObjectiveProgram]) -> dict[str, float]:
                 value = _finite_number(row.get(metric))
                 if value is not None:
                     dimensions.setdefault(f"{design}:{metric}", {})[program.id] = value
-        for metric in ("timing_proxy_wns_delta", "timing_proxy_tns_delta"):
-            value = _finite_number(program.metrics.get(metric))
-            if value is not None:
-                dimensions.setdefault(metric, {})[program.id] = -value
+        for metric in ("wns", "tns"):
+            # Admitted proxy evidence and tie-level proxy evidence both order
+            # candidates inside a front; only admitted evidence can dominate.
+            keys = (f"timing_evidence_{metric}_delta", f"timing_tiebreak_{metric}_delta")
+            if not any(key in program.metrics for key in keys):
+                keys = (f"timing_proxy_{metric}_delta",)
+            for key in keys:
+                value = _finite_number(program.metrics.get(key))
+                if value is not None:
+                    dimensions.setdefault(key, {})[program.id] = -value
         for metric in (
             "routed_wirelength_delta_pct",
             "routed_overflow_delta_pct",
@@ -5256,6 +5557,198 @@ def _equal_design_ranks(programs: list[ObjectiveProgram]) -> dict[str, float]:
         program.id: totals[program.id] / max(counts[program.id], 1)
         for program in programs
     }
+
+
+def _timing_admission_path(run_root: str | Path) -> Path:
+    return Path(run_root) / "timing_proxy_audit" / "admission.json"
+
+
+def _load_timing_admission(
+    config: OpenEvolveTier2Config,
+    run_root: str | Path,
+) -> dict[str, Any]:
+    """Current timing-proxy admission: the latest audit, else the configured mode."""
+
+    path = _timing_admission_path(run_root)
+    if path.is_file():
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict) and payload.get("authority"):
+            return payload
+    return default_timing_proxy_admission(
+        config.timing_proxy_mode if config.timing_proxy_enabled else "diagnostic"
+    )
+
+
+def _timing_audit_source(
+    database: ObjectiveProgramDatabase,
+) -> tuple[ObjectiveProgram, str, Path] | None:
+    """Best measured program whose placements can be perturbed by the audit."""
+
+    best = database.get(database.best_program_id)
+    ordered = ([best] if best is not None else []) + sorted(
+        database.programs.values(),
+        key=lambda program: (program.combined_score, program.id),
+        reverse=True,
+    )
+    for program in ordered:
+        if program.status != "accepted" or program.metrics.get("structural_failure_count"):
+            continue
+        summary = program.artifacts.get("tier2_summary")
+        comparison_csv = summary.get("comparison_csv") if isinstance(summary, dict) else None
+        objective_id = str(
+            program.artifacts.get("objective_id_in_tier2")
+            or (program.objective_spec or {}).get("id")
+            or ""
+        )
+        if objective_id and comparison_csv and Path(str(comparison_csv)).is_file():
+            return program, objective_id, Path(str(comparison_csv))
+    return None
+
+
+def _timing_downstream_pairs(
+    database: ObjectiveProgramDatabase,
+) -> dict[str, list[tuple[float, float]]]:
+    """Pair each routed candidate's proxy movement with its post-route movement."""
+
+    pairs: dict[str, list[tuple[float, float]]] = {"wns": [], "tns": []}
+    for program in database.programs.values():
+        metrics = program.metrics
+        if metrics.get("migrant"):
+            continue
+        proxy_rows = metrics.get("timing_proxy_per_design_deltas")
+        routed_rows = metrics.get("per_design_routed_evidence")
+        if not isinstance(proxy_rows, list) or not isinstance(routed_rows, list):
+            continue
+        for proxy_row in proxy_rows:
+            if not isinstance(proxy_row, dict):
+                continue
+            design_rows = [
+                row
+                for row in routed_rows
+                if isinstance(row, dict) and row.get("design") == proxy_row.get("design")
+            ]
+            for metric in ("wns", "tns"):
+                proxy_value = _finite_number(proxy_row.get(f"{metric}_delta"))
+                routed_value = _mean_finite(row.get(f"{metric}_gain_ns") for row in design_rows)
+                if proxy_value is not None and routed_value is not None:
+                    pairs[metric].append((proxy_value, routed_value))
+    return pairs
+
+
+def _run_scheduled_timing_proxy_audit(
+    *,
+    config: OpenEvolveTier2Config,
+    database: ObjectiveProgramDatabase,
+    iteration: int,
+    run_root: Path,
+    dreamplace_root: str | Path,
+) -> dict[str, Any] | None:
+    """Audit the timing proxy and refresh how it enters archive selection.
+
+    Each timing-panel design is audited separately: controlled coordinate
+    perturbations of the native and the current best placement measure how far
+    proxy WNS/TNS movement merely restates HPWL movement, and routed candidates
+    show whether it follows post-route movement. The resulting per-design,
+    per-metric outcome decides whether the proxy can dominate (admit), only
+    order close candidates (tie), or is left out (reject).
+    """
+
+    interval = int(config.timing_proxy_audit_interval)
+    if (
+        not config.timing_proxy_enabled
+        or not config.timing_proxy_panel
+        or interval <= 0
+        or iteration % interval != 0
+    ):
+        return None
+    audit_root = Path(run_root) / "timing_proxy_audit" / f"iteration_{iteration:04d}"
+    source = _timing_audit_source(database)
+    timing_panel = load_timing_proxy_panel(config.timing_proxy_panel)
+    by_design: dict[str, dict[str, dict[str, Any]]] = {}
+    reports = []
+    if source is not None:
+        program, objective_id, comparison_csv = source
+        for design in timing_panel.designs:
+            design_root = audit_root / _safe_name(design.name)
+            placements_path = placements_from_tier2_comparison(
+                comparison_csv,
+                design_root / "placements.json",
+                objective_ids={objective_id},
+                design_names={design.name},
+                include_default=True,
+                include_custom_default=False,
+                minimum_source_iterations=config.minimum_scoring_iterations,
+            )
+            if _placement_count(placements_path) == 0:
+                reports.append({"design": design.name, "status": "no_placements"})
+                continue
+            try:
+                summary = run_timing_proxy_audit(
+                    design=design.name,
+                    base_config=design.base_config,
+                    timing_panel_path=config.timing_proxy_panel,
+                    placements_path=placements_path,
+                    dreamplace_root=dreamplace_root,
+                    run_dir=design_root,
+                    perturbations=config.timing_proxy_audit_perturbations,
+                    timeout_seconds=timing_panel.timeout_seconds,
+                    gpu=timing_panel.gpu,
+                    seed=config.seed,
+                    gate_threshold=config.timing_proxy_max_hpwl_corr_for_gate,
+                    tiebreaker_threshold=config.timing_proxy_max_hpwl_corr_for_tiebreaker,
+                    min_pairs=config.timing_proxy_audit_min_pairs,
+                )
+            except Exception as exc:
+                reports.append(
+                    {
+                        "design": design.name,
+                        "status": "failed",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+                continue
+            by_design[design.name] = summary["metric_admission"]
+            reports.append(
+                {
+                    "design": design.name,
+                    "status": "completed",
+                    "correlations": summary.get("correlations"),
+                    "audit_summary": str(design_root / "summary.json"),
+                }
+            )
+    if not by_design:
+        _write_json(
+            {"iteration": iteration, "status": "failed", "designs": reports},
+            audit_root / "audit_report.json",
+        )
+        if iteration == 0 and config.timing_proxy_audit_required:
+            raise RuntimeError(
+                "timing_proxy_audit_required is true, but the initial timing-proxy "
+                "audit produced no per-design result. Check the seed placements and "
+                "timing collateral before running objective evolution."
+            )
+        # A later audit that cannot run keeps the previous admission in force.
+        return None
+
+    admission = cap_unstable_timing_proxy_admission(
+        summarize_timing_proxy_admission(by_design),
+        timing_proxy_downstream_agreement(
+            _timing_downstream_pairs(database),
+            min_pairs=config.timing_proxy_audit_min_pairs,
+        ),
+    )
+    admission.update(
+        {
+            "iteration": iteration,
+            "source_program_id": source[0].id if source is not None else None,
+            "gate_threshold": config.timing_proxy_max_hpwl_corr_for_gate,
+            "tiebreaker_threshold": config.timing_proxy_max_hpwl_corr_for_tiebreaker,
+            "designs": reports,
+        }
+    )
+    _write_json(admission, audit_root / "audit_report.json")
+    _write_json(admission, _timing_admission_path(run_root))
+    return admission
 
 
 def _apply_manuscript_multimetric_selection(
@@ -5740,6 +6233,7 @@ def _run_final_panel(
         objective_semantics=(
             "raw" if config.objective_mode == "controller" else None
         ),
+        timing_controller_panel=config.timing_controller_panel,
     )
     summary["status"] = "completed"
     summary["selection_policy"] = selection_policy
@@ -5839,6 +6333,7 @@ def _run_generalization_panel(
         objective_semantics=(
             "raw" if config.objective_mode == "controller" else None
         ),
+        timing_controller_panel=config.timing_controller_panel,
     )
     summary["status"] = "completed"
     summary["selection_policy"] = selection_policy
@@ -6278,6 +6773,7 @@ def _run_scheduled_tier3_feedback(
             "per_design_routed_evidence": rows,
         }
         program.metrics.update(evidence)
+        program.metrics["tier_c_evaluated"] = True
         program.artifacts["scheduled_routed_evaluation"] = summary
         evidence_rows.append(
             {
@@ -6287,15 +6783,30 @@ def _run_scheduled_tier3_feedback(
             }
         )
 
-    feedback = {
-        "stage": "scheduled_routed_evaluation",
+    round_record = {
         "iteration": iteration,
         "selected_objective_ids": sorted(selected_objective_ids),
         "baseline_objective_id": baseline_id,
         "evidence": evidence_rows,
         "comparison_csv": summary["comparison_csv"],
     }
-    feedback_path = _write_json(feedback, run_root / "routed_feedback.json")
+    feedback_file = run_root / "routed_feedback.json"
+    previous = _load_json(str(feedback_file)) if feedback_file.is_file() else None
+    rounds = [
+        item
+        for item in (previous or {}).get("rounds", [])
+        if isinstance(item, dict) and item.get("iteration") != iteration
+    ]
+    rounds.append(round_record)
+    rounds.sort(key=lambda item: int(item.get("iteration") or 0))
+    # The latest round stays at the top level; "rounds" keeps every round so
+    # later prompts see all routed evidence gathered during the run.
+    feedback = {
+        "stage": "scheduled_routed_evaluation",
+        **round_record,
+        "rounds": rounds,
+    }
+    feedback_path = _write_json(feedback, feedback_file)
     summary.update(
         {
             "status": "success" if evidence_rows else "partial",
@@ -7091,6 +7602,7 @@ def _evaluate_initial_presets(
             objective_semantics=(
                 "raw" if config.objective_mode == "controller" else None
             ),
+            timing_controller_panel=config.timing_controller_panel,
         )
     except Exception as exc:
         for index, name, spec in preset_by_path.values():
@@ -7159,6 +7671,9 @@ def _evaluate_initial_presets(
         candidate_rows = [row for row in rows if row.get("objective_id") == objective_id]
         metrics = _metrics_from_rows(candidate_rows, ranking_by_id.get(objective_id), config)
         metrics.update(timing_metrics.get(objective_id, {}))
+        # Seed baselines are the audit's reference placements and always
+        # receive the timing proxy when it is enabled.
+        _record_tier_b_evidence(metrics, selected=config.timing_proxy_enabled)
         _apply_timing_controller_admission(metrics, spec, config)
         _apply_final_def_selection_metrics(metrics, config)
         _apply_routing_gate(metrics, spec, config, allow_nonrouting_parent=True)
@@ -7346,6 +7861,15 @@ def _static_rejection_reason(
                 "observables; privileged native-schedule observables are "
                 f"reserved for identity controls: {privileged_used}"
             )
+        if spec.net_weight_policy is not None:
+            uncovered = _timing_controller_uncovered_designs(config)
+            if uncovered:
+                return (
+                    "update_net_weights needs timing analysis during placement, "
+                    "and this run has no in-loop timing collateral for "
+                    f"{uncovered}; remove update_net_weights and express the "
+                    "mechanism through the policy schedules"
+                )
         if not (set(spec.term_set) & WIRELENGTH_FAMILY_TERMS):
             return (
                 "controller objective must include a canonical wirelength anchor "

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 from abc import ABC, abstractmethod
@@ -889,6 +890,116 @@ class QwenProvider(LLMProvider):
         )
 
 
+class AnthropicProvider(LLMProvider):
+    name = "anthropic"
+
+    # Responses are streamed, so the ceiling can leave room for adaptive
+    # thinking without running into request timeouts.
+    max_tokens = 64000
+
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
+        try:
+            import anthropic
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "AnthropicProvider requires the Anthropic SDK; install it with "
+                "pip install 'coevop-platform[anthropic]'"
+            ) from exc
+        self.model = model or os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-8")
+        # Without an explicit key the SDK resolves credentials itself, from
+        # ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, or an `ant auth login` profile.
+        self.client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+
+    def generate(
+        self,
+        context: dict[str, Any] | None = None,
+        term_scope: str = "tier1",
+    ) -> ObjectiveSpec:
+        return self._objective_request(
+            generation_messages(context, term_scope),
+            term_scope=term_scope,
+        )
+
+    def generate_traced(
+        self,
+        context: dict[str, Any] | None = None,
+        term_scope: str = "tier1",
+        mutation_mode: str = "full",
+    ) -> ProviderTrace:
+        messages = generation_messages(context, term_scope, mutation_mode=mutation_mode)
+        response = self._messages_request(messages, structured=True, term_scope=term_scope)
+        payload = _parse_json_text(_extract_anthropic_text(response))
+        spec = parse_objective_payload(payload, created_by=self.name, term_scope=term_scope)
+        return ProviderTrace(
+            spec=spec,
+            messages=messages,
+            raw_response=response,
+            usage=_usage_from_response(response),
+            metadata=self.metadata(),
+        )
+
+    def mutate(
+        self,
+        parents: list[ObjectiveSpec],
+        feedback: dict[str, Any] | None = None,
+        term_scope: str = "tier1",
+    ) -> ObjectiveSpec:
+        parent_payloads = [objective_spec_to_dict(parent) for parent in parents]
+        return self._objective_request(
+            mutation_messages(parent_payloads, feedback, term_scope),
+            term_scope=term_scope,
+        )
+
+    def reflect(self, candidate: ObjectiveSpec, metrics: dict[str, Any]) -> str:
+        response = self._messages_request(
+            reflection_messages(asdict(candidate), metrics),
+            structured=False,
+        )
+        return _extract_anthropic_text(response).strip()
+
+    def _objective_request(self, messages: list[dict[str, str]], term_scope: str) -> ObjectiveSpec:
+        response = self._messages_request(messages, structured=True, term_scope=term_scope)
+        payload = _parse_json_text(_extract_anthropic_text(response))
+        return parse_objective_payload(payload, created_by=self.name, term_scope=term_scope)
+
+    def _messages_request(
+        self,
+        messages: list[dict[str, str]],
+        structured: bool,
+        term_scope: str = "tier1",
+    ) -> dict[str, Any]:
+        system = "\n\n".join(
+            message["content"] for message in messages if message["role"] == "system"
+        )
+        request: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "thinking": {"type": "adaptive"},
+            "messages": [
+                {"role": message["role"], "content": message["content"]}
+                for message in messages
+                if message["role"] != "system"
+            ],
+        }
+        if system:
+            request["system"] = system
+        if structured:
+            request["output_config"] = {
+                "format": {
+                    "type": "json_schema",
+                    "schema": objective_program_schema_for_provider(term_scope),
+                }
+            }
+        with self.client.messages.stream(**request) as stream:
+            message = stream.get_final_message()
+        # A declined or truncated turn is an HTTP success with no usable program.
+        if message.stop_reason in {"refusal", "max_tokens"}:
+            raise RuntimeError(
+                f"Anthropic response ended with stop_reason={message.stop_reason}"
+            )
+        return message.to_dict()
+
+
 def provider_from_name(name: str) -> LLMProvider:
     normalized = name.lower().strip()
     if normalized == "mock":
@@ -897,6 +1008,8 @@ def provider_from_name(name: str) -> LLMProvider:
         return OpenAIProvider()
     if normalized == "qwen":
         return QwenProvider()
+    if normalized == "anthropic":
+        return AnthropicProvider()
     raise ValueError(f"unknown LLM provider: {name}")
 
 
@@ -916,6 +1029,13 @@ def provider_status() -> dict[str, dict[str, Any]]:
             "model_env": "QWEN_MODEL",
             "base_url_env": "QWEN_BASE_URL or DASHSCOPE_BASE_URL",
         },
+        "anthropic": {
+            # The SDK resolves credentials on its own (API key, auth token, or
+            # a stored login profile), so only its presence is checked here.
+            "available": importlib.util.find_spec("anthropic") is not None,
+            "required_env": [],
+            "model_env": "ANTHROPIC_MODEL",
+        },
     }
 
 
@@ -932,6 +1052,17 @@ def _extract_responses_text(response: dict[str, Any]) -> str:
     raise RuntimeError(
         f"could not extract text from Responses API payload: {response}"
     )
+
+
+def _extract_anthropic_text(response: dict[str, Any]) -> str:
+    chunks = [
+        str(block["text"])
+        for block in response.get("content", [])
+        if isinstance(block, dict) and block.get("type") == "text"
+    ]
+    if chunks:
+        return "".join(chunks)
+    raise RuntimeError(f"could not extract text from Messages API payload: {response}")
 
 
 def _extract_chat_text(response: dict[str, Any]) -> str:

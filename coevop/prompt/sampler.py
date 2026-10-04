@@ -16,6 +16,15 @@ from coevop.objectives.terms import (
 )
 from coevop.prompt.templates import TemplateManager
 
+# Tier C measurements attached to a routed candidate. Negative deltas and
+# positive gains are improvements over the matched DREAMPlace placement.
+ROUTED_EVIDENCE_KEYS = (
+    "routed_wirelength_delta_pct",
+    "routed_overflow_delta_pct",
+    "post_route_wns_gain_ns",
+    "post_route_tns_gain_ns",
+)
+
 
 class CoEvoPromptSampler:
     """Build archive-conditioned system and user prompts.
@@ -163,6 +172,7 @@ class CoEvoPromptSampler:
                     "selection_feedback": policy.get("selection_feedback"),
                     "evolution_memory": policy.get("evolution_memory"),
                     "composition_mechanisms": policy.get("composition_mechanisms"),
+                    "net_weight_policy": policy.get("net_weight_policy"),
                     "timing_proxy_feedback": policy.get("timing_proxy_feedback"),
                     "target_design_context": policy.get("target_design_context"),
                     "chip_design_profiles": policy.get("chip_design_profiles"),
@@ -299,6 +309,7 @@ def _format_metrics(metrics: dict[str, Any]) -> str:
         "timing_proxy_tns_delta_pct",
         "timing_proxy_mode",
         "timing_proxy_parent_signal",
+        *ROUTED_EVIDENCE_KEYS,
         "outcome_label",
         "feedback_lesson",
     ]
@@ -352,6 +363,7 @@ def _key_features(program: dict[str, Any]) -> str:
         "timing_proxy_tns_delta",
         "timing_proxy_tns_delta_pct",
         "timing_proxy_parent_signal",
+        *ROUTED_EVIDENCE_KEYS,
         "custom_grad_norm",
         "outcome_label",
     ):

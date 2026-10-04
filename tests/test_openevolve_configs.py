@@ -29,6 +29,15 @@ def test_primary_config_uses_complete_controller_loop():
     assert config.tier3_interval == 20
     assert config.tier3_start_iteration == 20
     assert Path(config.tier3_panel).name == "chipbench_table1_post_route.toml"
+    # Islands exchange elites and the timing proxy is re-audited on the same
+    # 20-generation cadence as routed evaluation.
+    assert config.migration_clock == "generation"
+    assert config.migration_interval == 20
+    assert config.timing_proxy_audit_interval == 20
+    assert config.timing_proxy_audit_perturbations == 5
+    assert config.timing_proxy_max_hpwl_corr_for_gate == 0.70
+    assert config.timing_proxy_max_hpwl_corr_for_tiebreaker == 0.95
+    assert Path(config.timing_controller_panel).name == "chipbench_timing_controller.toml"
 
 
 def test_all_supplied_evolution_configs_use_controller_interface():

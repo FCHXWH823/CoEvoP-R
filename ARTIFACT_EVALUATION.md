@@ -50,7 +50,7 @@ python3 -m coevop.cli openevolve-tier2 \
   --resume
 ```
 
-The paper configuration uses 160 generations, three proposals per generation, five islands, MAP-Elites memory, a four-design timing-evidence panel, and scheduled post-route evaluation every 20 generations.
+The paper configuration uses 160 generations, three proposals per generation, five islands, MAP-Elites memory, a four-design timing-evidence panel, and a 20-generation cadence for scheduled post-route evaluation, the timing-proxy audit, and island migration.
 
 ## Result files
 
@@ -58,4 +58,4 @@ Each run retains the resolved configuration, validated objective programs, linea
 
 ## External requirements
 
-Reproducing objective evolution requires an OpenAI API credential and `OPENAI_MODEL=gpt-5.4`. DREAMPlace, OpenTimer, OpenROAD, ChiPBench, OpenROAD-flow-scripts, ChiPBench Nangate45, ICCAD 2015 Superblue, and ASAP7 collateral must be installed separately. Runtime and API cost depend on the selected panel and hardware.
+Reproducing objective evolution requires an OpenAI API credential and `OPENAI_MODEL=gpt-5.4`. The model-family rows use the `anthropic` and `qwen` providers with their own credentials. DREAMPlace, OpenTimer, OpenROAD, ChiPBench, OpenROAD-flow-scripts, ChiPBench Nangate45, ICCAD 2015 Superblue, and ASAP7 collateral must be installed separately. Runtime and API cost depend on the selected panel and hardware.

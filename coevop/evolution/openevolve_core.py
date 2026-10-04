@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from coevop.objectives.spec import ObjectiveSpec, objective_spec_to_dict
-from coevop.prompt.sampler import CoEvoPromptSampler
+from coevop.prompt.sampler import ROUTED_EVIDENCE_KEYS, CoEvoPromptSampler
 
 FEATURE_SCHEMA_VERSION = 2
 DEFAULT_FEATURE_DIMENSIONS = (
@@ -174,6 +174,10 @@ class ObjectiveDatabaseConfig:
     migration_interval: int = 20
     migration_rate: float = 0.10
     migration_topology: str = "ring"
+    # "generation": every migration_interval evolution generations, all
+    # populated islands exchange elites (Algorithm 1). "island_generation":
+    # an island migrates after migration_interval of its own generations.
+    migration_clock: str = "generation"
 
 
 class ObjectiveProgramDatabase:
@@ -192,6 +196,7 @@ class ObjectiveProgramDatabase:
         self.archive: set[str] = set()
         self.best_program_id: str | None = None
         self.last_iteration: int = 0
+        self.last_migration_iteration: int = 0
         self.migration_events: list[dict[str, Any]] = []
         self.feature_recode_summary: dict[str, Any] = {}
 
@@ -327,23 +332,44 @@ class ObjectiveProgramDatabase:
         interval = int(self.config.migration_interval)
         if interval <= 0 or len(self.islands) <= 1:
             return []
-        active = [
-            index
-            for index, count in enumerate(self.island_generations)
-            if count > 0 and count % interval == 0
-            and self.island_last_migrated_generations[index] != count
-        ]
+        if self.config.migration_clock == "generation":
+            if (
+                iteration <= 0
+                or iteration % interval != 0
+                or self.last_migration_iteration == iteration
+            ):
+                return []
+            active = list(range(len(self.islands)))
+            self.last_migration_iteration = iteration
+        elif self.config.migration_clock == "island_generation":
+            active = [
+                index
+                for index, count in enumerate(self.island_generations)
+                if count > 0 and count % interval == 0
+                and self.island_last_migrated_generations[index] != count
+            ]
+        else:
+            raise ValueError(f"unknown migration clock: {self.config.migration_clock}")
+        # Snapshot every source island first so an elite received in this
+        # round is not forwarded again within the same round.
+        elites_by_source = {
+            source: sorted(
+                (
+                    self.programs[pid]
+                    for pid in self.islands[source]
+                    if pid in self.programs and self.programs[pid].is_parent_eligible
+                ),
+                key=lambda program: program.combined_score,
+                reverse=True,
+            )
+            for source in active
+        }
         migrants: list[ObjectiveProgram] = []
         for source in active:
             targets = self._migration_targets(source)
-            if not targets:
+            source_programs = elites_by_source[source]
+            if not targets or not source_programs:
                 continue
-            source_programs = [
-                self.programs[pid]
-                for pid in self.islands[source]
-                if pid in self.programs and self.programs[pid].is_parent_eligible
-            ]
-            source_programs.sort(key=lambda program: program.combined_score, reverse=True)
             count = max(1, int(math.ceil(len(source_programs) * float(self.config.migration_rate))))
             for target in targets:
                 copied = 0
@@ -473,6 +499,7 @@ class ObjectiveProgramDatabase:
             ],
             "island_generations": list(self.island_generations),
             "island_last_migrated_generations": list(self.island_last_migrated_generations),
+            "last_migration_iteration": self.last_migration_iteration,
             "migration_events": list(self.migration_events),
             "last_iteration": self.last_iteration if iteration is None else iteration,
             "config": asdict(self.config),
@@ -553,6 +580,9 @@ class ObjectiveProgramDatabase:
             if isinstance(event, dict)
         ]
         self.last_iteration = int(metadata.get("last_iteration", 0))
+        self.last_migration_iteration = int(
+            metadata.get("last_migration_iteration", 0) or 0
+        )
 
     def _recode_loaded_feature_maps(self, *, occupied_cells_before: int) -> None:
         self.archive.clear()
@@ -1064,6 +1094,13 @@ def _prompt_visible_policy(policy: dict[str, Any]) -> dict[str, Any]:
             "through typed policy slots. Its scalar loss retains smooth wirelength "
             "and density anchors, with optional routing and pin-access pressures."
         )
+        visible["net_weight_policy"] = (
+            "update_net_weights is available: timing criticalities are refreshed "
+            "during placement on every search design."
+            if (policy.get("timing_controller") or {}).get("available")
+            else "update_net_weights is unavailable in this run because no in-loop "
+            "timing collateral is configured; do not define it."
+        )
     elif policy.get("objective_mode") == "native_residual":
         visible["physical_anchor_contract"] = (
             "A native-residual objective should preserve term(\"native_objective\") "
@@ -1395,6 +1432,13 @@ def _compact_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
         "final_def_hpwl_delta_pct",
         "final_def_overflow_delta_pct",
         "selection_metric_stage",
+        *ROUTED_EVIDENCE_KEYS,
+        "post_route_evidence_iteration",
+        "post_route_evidence_status",
+        "tier_b_evaluated",
+        "tier_c_evaluated",
+        "timing_proxy_admission",
+        "pareto_front",
         "custom_grad_norm",
         "native_default_hpwl_delta_pct",
         "native_default_overflow_delta_pct",
@@ -1472,6 +1516,8 @@ def _feedback_row(program: ObjectiveProgram) -> dict[str, Any]:
         "timing_proxy_tns_delta_pct": metrics.get("timing_proxy_tns_delta_pct"),
         "timing_proxy_parent_signal": metrics.get("timing_proxy_parent_signal"),
         "timing_proxy_net_coverage": metrics.get("timing_proxy_net_coverage"),
+        **{key: metrics.get(key) for key in ROUTED_EVIDENCE_KEYS},
+        "post_route_evidence_iteration": metrics.get("post_route_evidence_iteration"),
         "native_default_hpwl_delta_pct": metrics.get("native_default_hpwl_delta_pct"),
         "native_default_overflow_delta_pct": metrics.get("native_default_overflow_delta_pct"),
         "custom_default_hpwl_delta_pct": metrics.get("custom_default_hpwl_delta_pct"),
@@ -1631,6 +1677,11 @@ def _mechanism_memory(
             "terms": program.metrics.get("mechanism_terms") or program.term_set,
             "hpwl_delta_pct": program.metrics.get("hpwl_delta_pct"),
             "overflow_delta_pct": program.metrics.get("overflow_delta_pct"),
+            **{
+                key: program.metrics[key]
+                for key in ROUTED_EVIDENCE_KEYS
+                if program.metrics.get(key) is not None
+            },
             "native_default_hpwl_delta_pct": program.metrics.get(
                 "native_default_hpwl_delta_pct"
             ),

@@ -29,6 +29,12 @@ from coevop.eval.macro_preflight import (
     audit_output_macro_coordinates,
     load_hard_macro_components,
 )
+from coevop.eval.timing_proxy import (
+    TimingProxyPanel,
+    load_timing_proxy_panel,
+    restore_def_identifiers,
+    write_timing_driven_config,
+)
 from coevop.objectives.presets import objective_preset
 from coevop.objectives.spec import ObjectiveSpec, load_objective_spec, write_objective_spec
 from coevop.objectives.terms import unsupported_terms_for_scope
@@ -96,6 +102,9 @@ class Tier2Objective:
     # DSL v2: "raw" runs the custom objective without hidden per-term value
     # normalization (controller mode); None keeps the legacy normalized path.
     objective_semantics: str | None = None
+    # True when the objective defines update_net_weights and therefore needs
+    # timing analysis during placement.
+    net_weight_policy: bool = False
 
 
 @dataclass(frozen=True)
@@ -190,11 +199,17 @@ def run_tier2_dreamplace(
     require_def_output: bool = False,
     disable_legalization: bool = True,
     objective_semantics: str | None = None,
+    timing_controller_panel: str | Path | None = None,
 ) -> dict[str, Any]:
     run_root = Path(run_dir)
     run_root.mkdir(parents=True, exist_ok=True)
     store_path = Path(store_path) if store_path is not None else run_root / "tier2.sqlite"
     panel = load_panel(panel_path)
+    timing_panel = (
+        load_timing_proxy_panel(timing_controller_panel)
+        if timing_controller_panel
+        else None
+    )
     objectives = prepare_objectives(
         objective_paths,
         run_root=run_root,
@@ -229,6 +244,7 @@ def run_tier2_dreamplace(
                         require_output_artifact=require_output_artifact,
                         require_def_output=require_def_output,
                         disable_legalization=disable_legalization,
+                        timing_panel=timing_panel,
                     )
                     _upsert_result(conn, result)
                     results.append(result)
@@ -447,6 +463,7 @@ def _run_one_cell(
     require_output_artifact: bool = False,
     require_def_output: bool = False,
     disable_legalization: bool = True,
+    timing_panel: TimingProxyPanel | None = None,
 ) -> Tier2Result:
     run_dir = run_root / _safe_name(design.name) / _safe_name(objective.objective_id) / f"seed_{seed}"
     summary_path = run_dir / "run_summary.json"
@@ -468,9 +485,26 @@ def _run_one_cell(
             _write_json(asdict(previous), summary_path)
             return previous
     start = time.time()
+    restore_map: dict[str, str] = {}
     try:
+        base_config: str | Path = design.base_config
+        timing_design = (
+            next((item for item in timing_panel.designs if item.name == design.name), None)
+            if timing_panel is not None and objective.net_weight_policy
+            else None
+        )
+        if timing_design is not None:
+            # The per-net policy reads criticalities during placement, so this
+            # cell runs timing-driven with the design's timing collateral.
+            base_config, restore_map = write_timing_driven_config(
+                design=timing_design,
+                panel=timing_panel,
+                base_config=design.base_config,
+                dreamplace_root=dreamplace_root,
+                run_dir=run_dir,
+            )
         config_path = make_run_config(
-            design.base_config,
+            base_config,
             objective.objective_path,
             run_dir,
             iterations=panel.iterations,
@@ -501,6 +535,15 @@ def _run_one_cell(
         driver=panel.driver or "dreamplace/Placer.py",
     )
     write_run_summary(run, run_dir / "dreamplace_run.json")
+    if restore_map:
+        restored = {
+            str(path): restore_def_identifiers(path, restore_map)
+            for path in sorted((run_dir / "results").rglob("*.def"))
+        }
+        _write_json(
+            {"restored_identifier_counts": restored},
+            run_dir / "timing_collateral" / "def_restoration.json",
+        )
     macro_runtime_requirement = _macro_runtime_requirement(design.base_config)
     result = _result_from_run(
         design=design.name,
@@ -1270,6 +1313,7 @@ def _objective_from_spec(
         spec_id=spec.id,
         term_set=spec.term_set,
         objective_semantics=semantics,
+        net_weight_policy=spec.net_weight_policy is not None,
     )
 
 

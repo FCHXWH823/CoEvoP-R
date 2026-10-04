@@ -12,6 +12,9 @@ This repository contains the source code and configurations for CoEvoP&R. It evo
 - `patches/dreamplace` contains the DREAMPlace integration patch.
 - `configs/openevolve_tier2/chipbench_controller_tier2.toml` is the primary paper configuration.
 - `configs/timing_panels/chipbench_proxy_audit.toml` defines the four-design timing-evidence audit.
+- `configs/timing_panels/chipbench_timing_controller.toml` supplies in-loop timing collateral for candidates with per-net weight policies.
+- `coevop/eval/exposure.py` derives the CoEvoP&R-E and CoEvoP&R-L configurations from the primary configuration.
+- `coevop/eval/fixed_dp_bo.py` implements the Fixed-DP schedule BO control.
 - `configs/shared_panels/chipbench_table1_post_route.toml` defines the eight-design Nangate45 post-route panel.
 - `configs/shared_panels/iccad2015_superblue_final_notiming.toml` defines the eight-design Superblue transfer panel.
 - `configs/shared_panels/asap7_controller_final.toml` and `asap7_post_route.toml` define the gcd, ibex, and ariane ASAP7 panels.
@@ -127,14 +130,15 @@ python3 -m coevop.cli tier3-openroad \
 ## 5. Placement-stage timing evidence
 
 Export the timing constraints from the same ChiPBench floorplan run used to
-construct each placement benchmark.
+construct each placement benchmark. The audit panel uses bp_fe, swerv_wrapper,
+ethernet, and or1200; candidates with a per-net weight policy need the
+constraints of all eight designs.
 
 ```bash
 export COEVOP_TIMING_COLLATERAL_ROOT="$COEVOP_ROOT/data/timing_collateral"
 python3 scripts/export_table1_timing_collateral.py \
   --config-root configs/dreamplace_base/chipbench_movable \
-  --output-root "$COEVOP_TIMING_COLLATERAL_ROOT" \
-  --design bp_fe --design swerv_wrapper --design ethernet --design or1200
+  --output-root "$COEVOP_TIMING_COLLATERAL_ROOT"
 ```
 
 Evaluate a placement manifest and audit timing redundancy.
@@ -153,6 +157,8 @@ python3 -m coevop.cli timing-proxy-audit \
   --run-dir runs/timing_proxy/audit_bp_fe
 ```
 
+The audit perturbs placed coordinates by 100 to 2000 DBU and correlates the resulting WNS and TNS movement with HPWL movement. For each design and each metric the outcome is Admit when the larger of the absolute Pearson and Spearman correlations is below 0.70, Tie up to 0.95, and Reject above it. Admit lets the metric enter candidate selection, Tie uses it only to order candidates on the same Pareto front, and Reject excludes it. During evolution the audit runs on the seed placements and again every 20 generations, on the native placement and the current best candidate; a metric whose movement disagrees with the post-route movement of the routed candidates is limited to Tie. The current outcome is stored in `timing_proxy_audit/admission.json`.
+
 Only cells satisfying the configured net-coverage and stability checks are admitted as timing evidence.
 For every evaluated placement, CoEvoP&R reconstructs a flat named-port
 timing netlist directly from its DEF. The runtime manifest records the source
@@ -167,6 +173,12 @@ Set the model and API credential used in the paper.
 ```bash
 export OPENAI_API_KEY=YOUR_KEY
 export OPENAI_MODEL=gpt-5.4
+```
+
+The `provider` key of the evolution configuration selects the proposal model. `openai` is the default; `qwen` reads `QWEN_API_KEY` and `QWEN_MODEL`. `anthropic` uses the Anthropic SDK, which resolves its own credentials, and reads `ANTHROPIC_MODEL` (default `claude-opus-4-8`).
+
+```bash
+python3 -m pip install -e '.[anthropic]'
 ```
 
 Inspect the first archive-conditioned prompt without making an API call.
@@ -187,9 +199,38 @@ python3 -m coevop.cli openevolve-tier2 \
   --resume
 ```
 
-The configuration evaluates three proposals per generation for 160 generations. Every 20 generations, three admitted candidates are sent through the routed panel. Their routed wirelength, congestion, WNS, and TNS evidence update the program records and `routed_feedback.json` before the next prompt is constructed.
+The configuration evaluates three proposals per generation for 160 generations on five islands. Each candidate receives cost-scaled evidence.
 
-Create a leave-one-design-out transfer configuration with
+- Tier A runs DREAMPlace for every validated candidate.
+- Tier B applies the timing proxy to the candidates whose Tier A placement completed with finite HPWL and overflow.
+- Tier C routes three candidates every 20 generations. Their routed wirelength, routing overflow, WNS, and TNS update the program records and `routed_feedback.json`, which keeps every routed round, before the next prompt is constructed.
+
+The archive orders candidates by Pareto dominance over wirelength, overflow, WNS, and TNS. Each coordinate is compared at the most faithful tier both candidates received, so routed measurements are compared only with routed measurements. Every 20 generations all islands exchange elites along the ring, and the archive is Pareto-refreshed afterwards.
+
+A candidate may define `update_net_weights`. It then runs timing-driven with the collateral in `configs/timing_panels/chipbench_timing_controller.toml`, and its placed DEF is written back with the original identifiers. Remove the `panel` line under `[timing_controller]` to keep per-net policies out of the search.
+
+### Exposure settings
+
+The primary configuration evolves one objective with feedback from all eight ChiPBench designs. Its champion, `frozen_nangate45_champion.json`, is the candidate transferred without further search as CoEvoP&R-T.
+
+CoEvoP&R-E uses feedback from the same design on which it is evaluated. Create that configuration for one target design with
+
+```bash
+python3 scripts/make_target_evolution_config.py \
+  --family chipbench \
+  --design bp_fe \
+  --output-dir runs/configs/target_bp_fe
+
+python3 -m coevop.cli openevolve-tier2 \
+  --config runs/configs/target_bp_fe/openevolve.toml \
+  --platform-config configs/default.toml \
+  --run-dir runs/target_bp_fe \
+  --resume
+```
+
+The script accepts `--family chipbench`, `superblue`, or `asap7`. Every generated configuration is derived from the primary configuration and keeps its method and budget; only the feedback panel and the collateral that exists for the target change. Tier B is enabled when the target design is in the timing panel.
+
+CoEvoP&R-L excludes the target design from objective evolution and prompt evidence. Create a leave-one-design-out configuration with
 
 ```bash
 python3 scripts/make_chipbench_lodo_config.py \
@@ -203,7 +244,7 @@ python3 -m coevop.cli openevolve-tier2 \
   --resume
 ```
 
-The held-out circuit is absent from the search panel, prompt context, parent selection, and scheduled search feedback. It enters the flow only through the final generalization and post-route evaluation.
+The held-out circuit is absent from the search panel, prompt context, parent selection, and scheduled search feedback. It enters the flow only through the final generalization and post-route evaluation. The configuration is otherwise identical to the primary configuration.
 
 ## 7. Paper result aggregation
 
@@ -221,11 +262,12 @@ The aggregator reports routed wirelength reduction, congestion reduction, WNS ga
 
 ## 8. Superblue and ASAP7 transfer
 
-Create a target-design Superblue evolution configuration with
+Create the CoEvoP&R-E configuration for a Superblue design with
 
 ```bash
 export SUPERBLUE_OPENROAD_CONFIG_ROOT=/path/to/superblue/openroad/configs
-python3 scripts/make_superblue_target_config.py \
+python3 scripts/make_target_evolution_config.py \
+  --family superblue \
   --design 3 \
   --output-dir runs/configs/superblue3
 
@@ -236,7 +278,7 @@ python3 -m coevop.cli openevolve-tier2 \
   --resume
 ```
 
-Repeat with designs 1, 4, 5, 7, 10, 16, and 18 for the complete target-evolution panel. The frozen Nangate45 champion can also be evaluated with the supplied Superblue and ASAP7 placement panels through `tier2-dreamplace`. The resulting DEF manifest is passed to `tier3-openroad` with `superblue_post_route.toml` or `asap7_post_route.toml`.
+Repeat with designs 1, 4, 5, 7, 10, 16, and 18 for the complete target-evolution panel, and with `--family asap7 --design gcd`, `ibex`, and `ariane` for ASAP7. These families ship no placement-stage timing collateral, so their candidates carry Tier A and Tier C evidence. The frozen Nangate45 champion can also be evaluated with the supplied Superblue and ASAP7 placement panels through `tier2-dreamplace`. The resulting DEF manifest is passed to `tier3-openroad` with `superblue_post_route.toml` or `asap7_post_route.toml`.
 
 ASAP7 requires gcd, ibex, and ariane collateral under `flow/designs/asap7` and the ASAP7 platform under `OPENROAD_FLOW_ROOT`.
 
@@ -255,6 +297,21 @@ python3 -m coevop.cli asap7-transfer \
   --run-dir runs/asap7_transfer \
   --resume
 ```
+
+## 9. Fixed-DP schedule BO
+
+This control keeps the DREAMPlace objective form, smoothed wirelength plus a scheduled density weight, and tunes only the coefficients of the density and smoothing schedules with a tree-structured Parzen estimator. It reads the same evolution configuration and therefore uses the same panels, generations, proposals per generation, evidence tiers, and scheduled routed evaluations. The estimator is fit to the archive's Pareto evidence order, so routed evidence guides it as it guides objective evolution.
+
+```bash
+python3 -m pip install -e '.[baselines]'
+python3 -m coevop.cli fixed-dp-schedule-bo \
+  --config configs/openevolve_tier2/chipbench_controller_tier2.toml \
+  --platform-config configs/default.toml \
+  --run-dir runs/fixed_dp_schedule_bo \
+  --resume
+```
+
+`summary.json` reports the proposal, valid, archive, and routed counts together with the best schedule and its evidence.
 
 ## Output provenance
 

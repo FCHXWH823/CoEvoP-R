@@ -1,0 +1,86 @@
+# In-loop timing collateral for candidates that define update_net_weights.
+# DREAMPlace refreshes net criticality during placement on every search design,
+# so all eight ChiPBench designs need exported floorplan constraints:
+#   python3 scripts/export_table1_timing_collateral.py \
+#     --config-root configs/dreamplace_base/chipbench_movable \
+#     --output-root "$COEVOP_TIMING_COLLATERAL_ROOT"
+ot_shell = "${DREAMPLACE_ROOT}/bin/ot-shell"
+timeout_seconds = 1800
+threads = 8
+gpu = 1
+scalarize_vector_nets = true
+derive_verilog_from_def = true
+min_net_coverage = 0.95
+lib = [
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_1024x32.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_128x116.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_128x256.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_128x32.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_2048x39.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_256x16.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_256x32.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_256x34.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_256x48.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_256x95.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_256x96.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_32x32.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_32x64.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_512x64.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_64x124.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_64x15.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_64x21.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_64x32.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_64x62.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_64x64.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_64x7.lib",
+  "${CHIPBENCH_ROOT}/flow/platforms/nangate45/lib/fakeram45_64x96.lib"
+]
+
+[[designs]]
+name = "bp_fe"
+base_config = "../dreamplace_base/chipbench_movable/bp_fe.json"
+sdc = "${COEVOP_TIMING_COLLATERAL_ROOT}/bp_fe/floorplan.sdc"
+top_module = "bp_fe_top"
+
+[[designs]]
+name = "bp_be"
+base_config = "../dreamplace_base/chipbench_movable/bp_be.json"
+sdc = "${COEVOP_TIMING_COLLATERAL_ROOT}/bp_be/floorplan.sdc"
+top_module = "bp_be_top"
+
+[[designs]]
+name = "swerv_wrapper"
+base_config = "../dreamplace_base/chipbench_movable/swerv_wrapper.json"
+sdc = "${COEVOP_TIMING_COLLATERAL_ROOT}/swerv_wrapper/floorplan.sdc"
+top_module = "swerv_wrapper"
+
+[[designs]]
+name = "ethernet"
+base_config = "../dreamplace_base/chipbench_movable/ethernet.json"
+sdc = "${COEVOP_TIMING_COLLATERAL_ROOT}/ethernet/floorplan.sdc"
+top_module = "eth_top"
+
+[[designs]]
+name = "dft68"
+base_config = "../dreamplace_base/chipbench_movable/dft68.json"
+sdc = "${COEVOP_TIMING_COLLATERAL_ROOT}/dft68/floorplan.sdc"
+top_module = "dft_top"
+
+[[designs]]
+name = "or1200"
+base_config = "../dreamplace_base/chipbench_movable/or1200.json"
+sdc = "${COEVOP_TIMING_COLLATERAL_ROOT}/or1200/floorplan.sdc"
+top_module = "or1200_top"
+
+[[designs]]
+name = "vga_lcd"
+base_config = "../dreamplace_base/chipbench_movable/vga_lcd.json"
+sdc = "${COEVOP_TIMING_COLLATERAL_ROOT}/vga_lcd/floorplan.sdc"
+top_module = "vga_enh_top"
+
+[[designs]]
+name = "mor1kx"
+base_config = "../dreamplace_base/chipbench_movable/mor1kx.json"
+sdc = "${COEVOP_TIMING_COLLATERAL_ROOT}/mor1kx/floorplan.sdc"
+top_module = "mor1kx"

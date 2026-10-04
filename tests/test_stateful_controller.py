@@ -283,6 +283,20 @@ def test_timing_controller_requires_high_coverage_and_executed_update():
     assert complete["timing_proxy_wns_delta"] == pytest.approx(0.01)
     assert complete["timing_proxy_tns_delta"] == pytest.approx(0.1)
 
+    # The matched native placement is not timing-driven, so a candidate may
+    # report in-loop WNS/TNS without a baseline to difference against.
+    without_baseline = {
+        "iteration_budget_satisfied": True,
+        "structural_failure_count": 0,
+        "in_loop_timing_net_coverage": 0.99,
+        "in_loop_timing_policy_updates": 2.0,
+        "in_loop_wns": -0.4,
+        "in_loop_tns": -12.0,
+    }
+    _apply_timing_controller_admission(without_baseline, spec, config)
+    assert without_baseline["timing_controller_admission_passed"] is True
+    assert "timing_proxy_wns_delta" not in without_baseline
+
 
 def test_controller_prompt_lists_observables_but_not_privileged():
     messages = generation_messages(
@@ -492,17 +506,17 @@ def test_pareto_selection_has_no_hpwl_or_overflow_admission_gate(tmp_path):
     )
 
 
-def test_pareto_vectors_keep_wns_and_tns_in_distinct_slots():
-    from coevop.eval.openevolve_tier2 import _dominates, _pareto_vector
+def test_pareto_evidence_keeps_wns_and_tns_in_distinct_coordinates():
+    from coevop.eval.openevolve_tier2 import _dominates, _pareto_evidence
 
-    wns_only = _pareto_vector(
+    wns_only = _pareto_evidence(
         {
             "hpwl_delta_pct": 0.0,
             "overflow_delta_pct": 0.0,
             "timing_proxy_wns_delta": 0.1,
         }
     )
-    tns_only = _pareto_vector(
+    tns_only = _pareto_evidence(
         {
             "hpwl_delta_pct": 0.0,
             "overflow_delta_pct": 0.0,
@@ -510,7 +524,13 @@ def test_pareto_vectors_keep_wns_and_tns_in_distinct_slots():
         }
     )
 
-    assert wns_only == (0.0, None, 0.0, -0.1, None)
-    assert tns_only == (0.0, None, 0.0, None, -1.0)
+    assert wns_only == {
+        "wirelength": {"A": 0.0},
+        "overflow": {"A": 0.0},
+        "wns": {"B": -0.1},
+        "tns": {},
+    }
+    assert tns_only["wns"] == {}
+    assert tns_only["tns"] == {"B": -1.0}
     assert _dominates(wns_only, tns_only) is False
     assert _dominates(tns_only, wns_only) is False

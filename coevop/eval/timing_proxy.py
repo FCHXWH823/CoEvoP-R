@@ -31,6 +31,10 @@ from coevop.backends.dreamplace import run_dreamplace, write_run_summary
 
 TIMING_PROXY_RC_MODEL = "flute_elmore_per_micron"
 TIMING_PROXY_MODES = {"diagnostic", "tie_breaker", "gate"}
+# Audit outcomes for one design and metric. Admit uses the proxy in candidate
+# selection, tie uses it only to order close cases, and reject excludes it.
+TIMING_PROXY_ADMISSION_OUTCOMES = ("reject", "tie", "admit")
+TIMING_PROXY_AUDITED_METRICS = ("wns", "tns")
 TIMING_PROXY_STATUSES = {
     "success",
     "partial",
@@ -297,6 +301,9 @@ def run_timing_proxy_audit(
     timeout_seconds: int = 600,
     gpu: int | None = None,
     seed: int = 1000,
+    gate_threshold: float = 0.70,
+    tiebreaker_threshold: float = 0.95,
+    min_pairs: int = 3,
 ) -> dict[str, Any]:
     run_root = Path(run_dir).resolve()
     run_root.mkdir(parents=True, exist_ok=True)
@@ -389,8 +396,14 @@ def run_timing_proxy_audit(
     correlations = audit_correlations(audit_rows)
     recommendation = timing_proxy_mode_from_correlations(
         correlations,
-        gate_threshold=0.70,
-        tiebreaker_threshold=0.95,
+        gate_threshold=gate_threshold,
+        tiebreaker_threshold=tiebreaker_threshold,
+    )
+    metric_admission = timing_proxy_metric_admission(
+        correlations,
+        gate_threshold=gate_threshold,
+        tiebreaker_threshold=tiebreaker_threshold,
+        min_pairs=min_pairs,
     )
     rows_csv = _write_csv(
         audit_rows,
@@ -401,9 +414,11 @@ def run_timing_proxy_audit(
             "variant",
             "magnitude_dbu",
             "hpwl",
+            "overflow",
             "wns",
             "tns",
             "hpwl_delta",
+            "overflow_delta",
             "wns_delta",
             "tns_delta",
             "status",
@@ -419,6 +434,9 @@ def run_timing_proxy_audit(
         "timing_proxy_eval": timing_summary,
         "audit_rows_csv": str(rows_csv),
         "correlations": correlations,
+        "gate_threshold": gate_threshold,
+        "tiebreaker_threshold": tiebreaker_threshold,
+        "metric_admission": metric_admission,
         "recommended_mode": recommendation["mode"],
         "recommendation_reason": recommendation["reason"],
         "timing_proxy_rc_model": TIMING_PROXY_RC_MODEL,
@@ -482,6 +500,11 @@ def audit_correlations(rows: list[dict[str, Any]]) -> dict[str, Any]:
     tns = [_float_or_none(row.get("tns_delta")) for row in rows]
     hpwl_wns_pairs = _finite_pairs(hpwl, wns)
     hpwl_tns_pairs = _finite_pairs(hpwl, tns)
+    # Density overflow is the other Tier A coordinate. Its correlations are
+    # reported with the audit; admission follows the HPWL redundancy check.
+    overflow = [_float_or_none(row.get("overflow_delta")) for row in rows]
+    overflow_wns_pairs = _finite_pairs(overflow, wns)
+    overflow_tns_pairs = _finite_pairs(overflow, tns)
     return {
         "hpwl_wns_pearson": pearson([a for a, _ in hpwl_wns_pairs], [b for _, b in hpwl_wns_pairs]),
         "hpwl_wns_spearman": spearman([a for a, _ in hpwl_wns_pairs], [b for _, b in hpwl_wns_pairs]),
@@ -489,6 +512,18 @@ def audit_correlations(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "hpwl_tns_spearman": spearman([a for a, _ in hpwl_tns_pairs], [b for _, b in hpwl_tns_pairs]),
         "pair_count_wns": len(hpwl_wns_pairs),
         "pair_count_tns": len(hpwl_tns_pairs),
+        "overflow_wns_pearson": pearson(
+            [a for a, _ in overflow_wns_pairs], [b for _, b in overflow_wns_pairs]
+        ),
+        "overflow_wns_spearman": spearman(
+            [a for a, _ in overflow_wns_pairs], [b for _, b in overflow_wns_pairs]
+        ),
+        "overflow_tns_pearson": pearson(
+            [a for a, _ in overflow_tns_pairs], [b for _, b in overflow_tns_pairs]
+        ),
+        "overflow_tns_spearman": spearman(
+            [a for a, _ in overflow_tns_pairs], [b for _, b in overflow_tns_pairs]
+        ),
     }
 
 
@@ -527,6 +562,233 @@ def timing_proxy_mode_from_correlations(
     return {
         "mode": "gate",
         "reason": f"timing proxy has useful independence from HPWL (max |corr|={max_abs:.3g})",
+    }
+
+
+def timing_proxy_metric_admission(
+    correlations: dict[str, Any],
+    *,
+    gate_threshold: float,
+    tiebreaker_threshold: float,
+    min_pairs: int = 3,
+) -> dict[str, dict[str, Any]]:
+    """Admit, tie, or reject WNS and TNS separately from one design's audit.
+
+    Redundancy is the larger of the absolute Pearson and Spearman correlations
+    between the metric's movement and HPWL movement under the controlled
+    perturbations. A metric that mostly restates HPWL adds no evidence.
+    """
+
+    admission: dict[str, dict[str, Any]] = {}
+    for metric in TIMING_PROXY_AUDITED_METRICS:
+        pearson_value = _float_or_none(correlations.get(f"hpwl_{metric}_pearson"))
+        spearman_value = _float_or_none(correlations.get(f"hpwl_{metric}_spearman"))
+        pair_count = _int_or_none(correlations.get(f"pair_count_{metric}")) or 0
+        values = [abs(value) for value in (pearson_value, spearman_value) if value is not None]
+        redundancy = max(values) if values else None
+        if pair_count < min_pairs or redundancy is None:
+            outcome = "reject"
+            reason = "insufficient finite perturbation pairs or no metric movement"
+        elif redundancy > tiebreaker_threshold:
+            outcome = "reject"
+            reason = f"redundant with HPWL (max |corr|={redundancy:.3g})"
+        elif redundancy >= gate_threshold:
+            outcome = "tie"
+            reason = f"partially redundant with HPWL (max |corr|={redundancy:.3g})"
+        else:
+            outcome = "admit"
+            reason = f"adds information beyond HPWL (max |corr|={redundancy:.3g})"
+        admission[metric] = {
+            "outcome": outcome,
+            "reason": reason,
+            "hpwl_redundancy": redundancy,
+            "hpwl_pearson": pearson_value,
+            "hpwl_spearman": spearman_value,
+            "pair_count": pair_count,
+        }
+    return admission
+
+
+def summarize_timing_proxy_admission(
+    by_design: dict[str, dict[str, dict[str, Any]]],
+    *,
+    source: str = "audit",
+) -> dict[str, Any]:
+    """Aggregate per-design audit outcomes into the archive's timing authority."""
+
+    counts: dict[str, dict[str, int]] = {}
+    median: dict[str, dict[str, float | None]] = {}
+    authority: dict[str, str] = {}
+    for metric in TIMING_PROXY_AUDITED_METRICS:
+        entries = [
+            design_admission[metric]
+            for design_admission in by_design.values()
+            if isinstance(design_admission.get(metric), dict)
+        ]
+        metric_counts = {outcome: 0 for outcome in TIMING_PROXY_ADMISSION_OUTCOMES}
+        for entry in entries:
+            outcome = str(entry.get("outcome"))
+            if outcome in metric_counts:
+                metric_counts[outcome] += 1
+        counts[metric] = metric_counts
+        median[metric] = {
+            key: _median_finite(entry.get(key) for entry in entries)
+            for key in ("hpwl_pearson", "hpwl_spearman")
+        }
+        # Majority outcome over the audited designs; equal counts resolve to
+        # the weaker authority.
+        authority[metric] = max(
+            TIMING_PROXY_ADMISSION_OUTCOMES,
+            key=lambda outcome: (
+                metric_counts[outcome],
+                -TIMING_PROXY_ADMISSION_OUTCOMES.index(outcome),
+            ),
+        ) if entries else "reject"
+    return {
+        "source": source,
+        "by_design": by_design,
+        "counts": counts,
+        "median_hpwl_correlation": median,
+        "authority": authority,
+    }
+
+
+def default_timing_proxy_admission(
+    mode: str,
+    designs: Any = (),
+) -> dict[str, Any]:
+    """Admission implied by the configured mode when no audit has run."""
+
+    outcome = {"gate": "admit", "tie_breaker": "tie"}.get(str(mode), "reject")
+    by_design = {
+        str(design): {
+            metric: {"outcome": outcome, "reason": f"configured mode {mode}"}
+            for metric in TIMING_PROXY_AUDITED_METRICS
+        }
+        for design in designs
+    }
+    summary = summarize_timing_proxy_admission(by_design, source="configured_mode")
+    summary["authority"] = {metric: outcome for metric in TIMING_PROXY_AUDITED_METRICS}
+    return summary
+
+
+def timing_proxy_downstream_agreement(
+    pairs_by_metric: dict[str, list[tuple[float, float]]],
+    *,
+    min_pairs: int = 3,
+) -> dict[str, dict[str, Any]]:
+    """Compare placement-stage timing movement with post-route movement.
+
+    Each pair holds the proxy delta and the routed gain of one candidate on one
+    design. A proxy whose movement does not follow the downstream movement is
+    unstable evidence.
+    """
+
+    agreement: dict[str, dict[str, Any]] = {}
+    for metric in TIMING_PROXY_AUDITED_METRICS:
+        pairs = [
+            (float(proxy), float(routed))
+            for proxy, routed in pairs_by_metric.get(metric, [])
+            if math.isfinite(float(proxy)) and math.isfinite(float(routed))
+        ]
+        pearson_value = pearson([a for a, _ in pairs], [b for _, b in pairs])
+        spearman_value = spearman([a for a, _ in pairs], [b for _, b in pairs])
+        if len(pairs) < min_pairs or pearson_value is None or spearman_value is None:
+            status = "unknown"
+        elif pearson_value > 0.0 and spearman_value > 0.0:
+            status = "stable"
+        else:
+            status = "unstable"
+        agreement[metric] = {
+            "status": status,
+            "pearson": pearson_value,
+            "spearman": spearman_value,
+            "pair_count": len(pairs),
+        }
+    return agreement
+
+
+def cap_unstable_timing_proxy_admission(
+    admission: dict[str, Any],
+    agreement: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Limit a downstream-unstable metric to tie-breaking on every design."""
+
+    by_design = {
+        design: {metric: dict(entry) for metric, entry in design_admission.items()}
+        for design, design_admission in dict(admission.get("by_design") or {}).items()
+    }
+    for metric, result in agreement.items():
+        if result.get("status") != "unstable":
+            continue
+        for design_admission in by_design.values():
+            entry = design_admission.get(metric)
+            if isinstance(entry, dict) and entry.get("outcome") == "admit":
+                entry["outcome"] = "tie"
+                entry["reason"] = (
+                    f"{entry.get('reason', '')}; capped because placement-stage "
+                    "movement disagrees with post-route movement"
+                ).strip("; ")
+    capped = summarize_timing_proxy_admission(
+        by_design, source=str(admission.get("source") or "audit")
+    )
+    for metric, result in agreement.items():
+        if result.get("status") == "unstable" and capped["authority"].get(metric) == "admit":
+            capped["authority"][metric] = "tie"
+    capped["downstream_agreement"] = agreement
+    return capped
+
+
+def apply_timing_proxy_admission(
+    metrics: dict[str, Any],
+    admission: dict[str, Any] | None,
+) -> None:
+    """Split a candidate's proxy deltas into selection and tie-break evidence.
+
+    Admitted designs supply the selection coordinate, tied designs supply the
+    value used only to order close cases, and rejected designs contribute to
+    neither. The unsplit proxy deltas stay available as archive features.
+    """
+
+    admission = admission or {}
+    by_design = dict(admission.get("by_design") or {})
+    authority = dict(admission.get("authority") or {})
+    per_design = metrics.get("timing_proxy_per_design_deltas")
+    for metric in TIMING_PROXY_AUDITED_METRICS:
+        admitted: list[float] = []
+        tied: list[float] = []
+        if isinstance(per_design, list) and per_design:
+            for row in per_design:
+                if not isinstance(row, dict):
+                    continue
+                value = _float_or_none(row.get(f"{metric}_delta"))
+                if value is None:
+                    continue
+                design_entry = dict(by_design.get(str(row.get("design"))) or {}).get(metric)
+                outcome = (
+                    str(design_entry.get("outcome"))
+                    if isinstance(design_entry, dict)
+                    else str(authority.get(metric, "reject"))
+                )
+                if outcome == "admit":
+                    admitted.append(value)
+                elif outcome == "tie":
+                    tied.append(value)
+        else:
+            value = _float_or_none(metrics.get(f"timing_proxy_{metric}_delta"))
+            if value is not None:
+                outcome = str(authority.get(metric, "reject"))
+                if outcome == "admit":
+                    admitted.append(value)
+                elif outcome == "tie":
+                    tied.append(value)
+        metrics[f"timing_evidence_{metric}_delta"] = (
+            sum(admitted) / len(admitted) if admitted else None
+        )
+        metrics[f"timing_tiebreak_{metric}_delta"] = sum(tied) / len(tied) if tied else None
+    metrics["timing_proxy_admission"] = {
+        metric: str(authority.get(metric, "reject"))
+        for metric in TIMING_PROXY_AUDITED_METRICS
     }
 
 
@@ -652,6 +914,7 @@ def timing_proxy_metrics_by_objective(
         if objective_id == baseline_objective_id:
             continue
         final_def_per_design = []
+        timing_per_design = []
         for design_name in sorted(
             {str(row.get("design") or "unknown") for row in objective_rows}
         ):
@@ -660,6 +923,18 @@ def timing_proxy_metrics_by_objective(
                 for row in objective_rows
                 if str(row.get("design") or "unknown") == design_name
             ]
+            timing_per_design.append(
+                {
+                    "design": design_name,
+                    "wns_delta": _mean_finite(
+                        row.get("timing_proxy_wns_delta") for row in design_rows
+                    ),
+                    "tns_delta": _mean_finite(
+                        row.get("timing_proxy_tns_delta") for row in design_rows
+                    ),
+                    "cell_count": len(design_rows),
+                }
+            )
             final_def_per_design.append(
                 {
                     "design": design_name,
@@ -712,6 +987,7 @@ def timing_proxy_metrics_by_objective(
                 row.get("placement_overflow_delta_pct") for row in objective_rows
             ),
             "final_def_per_design_deltas": final_def_per_design,
+            "timing_proxy_per_design_deltas": timing_per_design,
             "timing_proxy_wns_delta": _mean_finite(
                 row.get("timing_proxy_wns_delta") for row in objective_rows
             ),
@@ -1138,6 +1414,123 @@ def _make_timing_proxy_config(
     output = run_dir / "timing_proxy_config.json"
     output.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return output
+
+
+def write_timing_driven_config(
+    *,
+    design: TimingProxyDesign,
+    panel: TimingProxyPanel,
+    base_config: str | Path,
+    dreamplace_root: str | Path,
+    run_dir: str | Path,
+) -> tuple[Path, dict[str, str]]:
+    """Write a run-local DREAMPlace config with in-loop OpenTimer collateral.
+
+    An objective that defines ``update_net_weights`` needs criticalities during
+    placement. This prepares the same Liberty, SDC, and DEF-derived netlist the
+    fixed-DEF evaluator uses, starting from the design's input DEF, and returns
+    the map from OpenTimer-safe tokens to the original DEF tokens so the placed
+    DEF can be restored to its original names.
+    """
+
+    run_root = Path(run_dir).resolve()
+    run_root.mkdir(parents=True, exist_ok=True)
+    missing = _missing_collateral(design, panel)
+    if missing:
+        raise ValueError("missing timing collateral: " + ", ".join(missing))
+    source_config = Path(os.path.expandvars(str(base_config))).expanduser()
+    config = json.loads(source_config.read_text(encoding="utf-8-sig"))
+    input_def = _resolve_dreamplace_config_path(
+        os.path.expandvars(str(config.get("def_input") or "")),
+        Path(dreamplace_root),
+    )
+    if input_def is None or not input_def.is_file():
+        raise ValueError(f"design {design.name} has no readable def_input for in-loop timing")
+    prepared_def, name_map = _prepare_timing_def(
+        def_file=input_def,
+        run_dir=run_root,
+        scalarize_vector_nets=panel.scalarize_vector_nets,
+    )
+    config["def_input"] = str(prepared_def)
+    config["timer_engine"] = "opentimer"
+    config["timing_opt_flag"] = 1
+    config["enable_net_weighting"] = 1
+    if not _positive_float(config.get("wire_resistance_per_micron")):
+        config["wire_resistance_per_micron"] = 2.535
+    if not _positive_float(config.get("wire_capacitance_per_micron")):
+        config["wire_capacitance_per_micron"] = 1.6e-16
+    config["num_threads"] = int(panel.threads)
+    if design.lib:
+        config["lib_input"] = str(_prepare_timing_lib(lib=design.lib, run_dir=run_root))
+    top_module = _timing_top_module(design, config)
+    if panel.derive_verilog_from_def:
+        source_verilog: Path | None = _write_flat_verilog_from_def(
+            def_file=input_def,
+            run_dir=run_root,
+            top_module=top_module,
+        )
+    else:
+        source_verilog = Path(design.verilog) if design.verilog else None
+    prepared_verilog = (
+        _prepare_timing_verilog(
+            verilog=source_verilog,
+            run_dir=run_root,
+            instance_name_map=name_map,
+            top_module=top_module,
+            scalarize_vector_nets=(
+                panel.scalarize_vector_nets and not panel.derive_verilog_from_def
+            ),
+        )
+        if source_verilog is not None
+        else None
+    )
+    if prepared_verilog is not None:
+        config["verilog_input"] = str(prepared_verilog)
+    if design.sdc:
+        config["sdc_input"] = str(
+            _prepare_timing_sdc(
+                sdc=Path(design.sdc),
+                verilog=prepared_verilog,
+                run_dir=run_root,
+            )
+        )
+    if design.lef:
+        config["lef_input"] = design.lef
+    output = run_root / "timing_driven_base_config.json"
+    output.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    source_text = input_def.read_text(encoding="utf-8", errors="replace")
+    restore_map = {
+        name_map[_canonical_def_name(token)]: token
+        for token in _def_component_tokens(source_text) + _def_net_tokens(source_text)
+        if _canonical_def_name(token) in name_map
+    }
+    return output, restore_map
+
+
+def restore_def_identifiers(def_path: str | Path, restore_map: dict[str, str]) -> int:
+    """Rewrite OpenTimer-safe identifiers in a placed DEF back to their originals.
+
+    Downstream routing reads the flow's own netlist, so a placement produced
+    with in-loop timing must leave with the identifiers it came in with.
+    ``restore_map`` maps each OpenTimer-safe token to its original DEF token.
+    """
+
+    if not restore_map:
+        return 0
+    path = Path(def_path)
+    text = path.read_text(encoding="utf-8", errors="replace")
+    restored = 0
+
+    def replace(match: re.Match[str]) -> str:
+        nonlocal restored
+        original = restore_map.get(match.group(0))
+        if original is None:
+            return match.group(0)
+        restored += 1
+        return original
+
+    path.write_text(re.sub(r"\S+", replace, text), encoding="utf-8")
+    return restored
 
 
 def _write_flat_verilog_from_def(
@@ -2169,11 +2562,16 @@ def _audit_rows(
                 "variant": variant,
                 "magnitude_dbu": record.get("magnitude_dbu"),
                 "hpwl": result.get("timing_proxy_hpwl"),
+                "overflow": result.get("placement_overflow"),
                 "wns": result.get("timing_proxy_wns"),
                 "tns": result.get("timing_proxy_tns"),
                 "hpwl_delta": _delta_abs(
                     result.get("timing_proxy_hpwl"),
                     baseline.get("timing_proxy_hpwl"),
+                ),
+                "overflow_delta": _delta_abs(
+                    result.get("placement_overflow"),
+                    baseline.get("placement_overflow"),
                 ),
                 "wns_delta": _delta_abs(
                     result.get("timing_proxy_wns"),
@@ -2308,6 +2706,20 @@ def _mean_finite(values: Any) -> float | None:
         if numeric is not None:
             finite.append(numeric)
     return sum(finite) / len(finite) if finite else None
+
+
+def _median_finite(values: Any) -> float | None:
+    finite = sorted(
+        value
+        for value in (_float_or_none(item) for item in values)
+        if value is not None
+    )
+    if not finite:
+        return None
+    middle = len(finite) // 2
+    if len(finite) % 2:
+        return finite[middle]
+    return (finite[middle - 1] + finite[middle]) / 2.0
 
 
 def _min_finite_int(values: Any) -> int | None:

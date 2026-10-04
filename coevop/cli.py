@@ -26,6 +26,7 @@ from coevop.eval.openevolve_tier2 import (
     build_openevolve_prompt_dry_run,
     run_openevolve_tier2,
 )
+from coevop.eval.fixed_dp_bo import run_fixed_dp_schedule_bo
 from coevop.eval.shared_panel import check_shared_panel
 from coevop.eval.tier2_dreamplace import run_tier2_dreamplace
 from coevop.eval.tier3_openroad import recover_tier3_partial_run, run_tier3_openroad
@@ -191,6 +192,8 @@ def _cmd_timing_audit(args: argparse.Namespace) -> int:
         timeout_seconds=args.timeout_seconds,
         gpu=args.gpu,
         seed=args.seed,
+        gate_threshold=args.gate_threshold,
+        tiebreaker_threshold=args.tiebreaker_threshold,
     )
     _json(payload)
     return 0
@@ -199,6 +202,20 @@ def _cmd_timing_audit(args: argparse.Namespace) -> int:
 def _cmd_evolve(args: argparse.Namespace) -> int:
     config = load_config(args.platform_config)
     payload = run_openevolve_tier2(
+        config_path=args.config,
+        run_dir=args.run_dir,
+        dreamplace_root=config.dreamplace_root,
+        chipbench_root=config.chipbench_root,
+        resume=args.resume,
+        retry_failed=args.retry_failed,
+    )
+    _json(payload)
+    return 0
+
+
+def _cmd_fixed_dp_bo(args: argparse.Namespace) -> int:
+    config = load_config(args.platform_config)
+    payload = run_fixed_dp_schedule_bo(
         config_path=args.config,
         run_dir=args.run_dir,
         dreamplace_root=config.dreamplace_root,
@@ -454,7 +471,9 @@ def build_parser() -> argparse.ArgumentParser:
             cmd.add_argument("--design", required=True)
             cmd.add_argument("--base-config", required=True)
             cmd.add_argument("--timing-panel")
-            cmd.add_argument("--perturbations", type=int, default=4)
+            cmd.add_argument("--perturbations", type=int, default=5)
+            cmd.add_argument("--gate-threshold", type=float, default=0.70)
+            cmd.add_argument("--tiebreaker-threshold", type=float, default=0.95)
             cmd.add_argument("--timeout-seconds", type=int, default=1800)
             cmd.add_argument("--gpu", type=int, default=1)
             cmd.add_argument("--seed", type=int, default=42)
@@ -469,6 +488,17 @@ def build_parser() -> argparse.ArgumentParser:
     cmd.add_argument("--resume", action="store_true")
     cmd.add_argument("--retry-failed", action="store_true")
     cmd.set_defaults(func=_cmd_evolve)
+
+    cmd = commands.add_parser(
+        "fixed-dp-schedule-bo",
+        help="Tune the schedules of the fixed DREAMPlace objective form with TPE.",
+    )
+    cmd.add_argument("--config", required=True)
+    cmd.add_argument("--platform-config", default="configs/default.toml")
+    cmd.add_argument("--run-dir", required=True)
+    cmd.add_argument("--resume", action="store_true")
+    cmd.add_argument("--retry-failed", action="store_true")
+    cmd.set_defaults(func=_cmd_fixed_dp_bo)
 
     cmd = commands.add_parser("openevolve-prompt-audit", help="Audit saved proposal prompts.")
     cmd.add_argument("--run-dir", required=True)

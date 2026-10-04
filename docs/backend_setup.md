@@ -53,6 +53,15 @@ Export the four-design SDC collateral with
 `scripts/export_table1_timing_collateral.py` before running
 `timing-proxy-eval` or `timing-proxy-audit`.
 
+A candidate that defines `update_net_weights` needs timing analysis during
+placement. `configs/timing_panels/chipbench_timing_controller.toml` lists the
+Liberty files, constraints, and top module of every ChiPBench design for that
+purpose. The placement runner prepares the same DEF-derived netlist from the
+design's input DEF, enables DREAMPlace's timing-driven flow for that candidate
+only, and restores the original identifiers in the placed DEF before routing.
+A design without collateral rejects such a candidate before placement starts.
+Export the constraints of all eight designs before enabling the panel.
+
 ## OpenROAD and ChiPBench
 
 Verify the executable and panel inputs.
